@@ -2,6 +2,7 @@ import { FipeError, FipeService } from './fipe_service';
 import { CalculationResult } from './types';
 import { calculate, CURRENCY_PATTERN, extractCurrency, PageFees, parseCurrency, parseDescription } from './lib';
 import { getAutoLookupEnabled, getSettings, getToken, setStored, AUTO_LOOKUP_KEY } from './settings';
+import { isContextInvalidated, StorageSetResult } from './storage';
 import { categoryOf, Selection, showVehiclePicker } from './vehicle_picker';
 import { LotStore } from './lot_store';
 import { LotNotes, mountLotNotes } from './lot_notes';
@@ -16,8 +17,15 @@ const COMMISSION_PATTERN = /(\d+(?:[.,]\d+)?)\s*%\s*(?:referente à comissão|co
 const ADMIN_FEE_PATTERN = /Despesas (?:administrativas|operacionais)[^,]*?no valor de\s*(R\$\s*[\d.]+,\d{2})/i;
 const LOGISTICS_FEE_PATTERN = /Despesas de logística[^,]*?no valor de\s*(R\$\s*[\d.]+,\d{2})/i;
 
-async function setIpvaFee(value: number): Promise<void> {
-  return setStored({ ipvaFee: value });
+let ipvaTimer: number | null = null;
+function setIpvaFee(value: number): Promise<StorageSetResult> {
+  if (ipvaTimer !== null) window.clearTimeout(ipvaTimer);
+  return new Promise((resolve) => {
+    ipvaTimer = window.setTimeout(() => {
+      ipvaTimer = null;
+      void setStored({ ipvaFee: value }).then(resolve);
+    }, 500);
+  });
 }
 
 const IPVA_PAID_PATTERN = /IPVA\s*\d{0,4}\s*PAGO/i;
@@ -319,7 +327,26 @@ function showMessage(container: HTMLElement, message: string, cls = 'fipe-not-fo
   getResultsContainer(container).innerHTML = `<div class="fipe-alert"><span class="${cls}">${escapeHtml(message)}</span></div>`;
 }
 
+function showInvalidatedNotice(container: HTMLElement) {
+  container.dataset.state = 'invalidated';
+  container.style.borderLeftColor = '';
+  getResultsContainer(container).innerHTML = `
+    <div class="fipe-alert">
+      <span class="fipe-not-found">Recarregue a página para continuar usando a extensão</span>
+      <button type="button" class="fipe-reload-btn fipe-retry">Recarregar página</button>
+    </div>
+  `;
+  container.querySelector<HTMLButtonElement>('.fipe-reload-btn')?.addEventListener('click', () => {
+    window.location.reload();
+  });
+}
+
 async function renderEvaluation(container: HTMLElement, ctx: LotContext, override?: Selection) {
+  if (isContextInvalidated()) {
+    showInvalidatedNotice(container);
+    return;
+  }
+
   const picked = override ?? overrides.get(container);
   const parsed = picked ? null : parseDescription(ctx.description);
   container.style.borderLeftColor = '';
@@ -388,6 +415,8 @@ function openManual(container: HTMLElement) {
   });
 }
 
+let toggleTimer: number | null = null;
+
 function buildControls(container: HTMLElement) {
   const controls = container.querySelector<HTMLElement>('.fipe-controls');
   if (!controls || controls.childElementCount > 0) return;
@@ -411,7 +440,11 @@ function buildControls(container: HTMLElement) {
   manualButton.textContent = 'Selecionar veículo';
 
   toggle.addEventListener('change', () => {
-    void setStored({ [AUTO_LOOKUP_KEY]: toggle.checked });
+    if (toggleTimer !== null) window.clearTimeout(toggleTimer);
+    toggleTimer = window.setTimeout(() => {
+      toggleTimer = null;
+      void setStored({ [AUTO_LOOKUP_KEY]: toggle.checked });
+    }, 500);
   });
   manualButton.addEventListener('click', () => openManual(container));
 
@@ -420,6 +453,11 @@ function buildControls(container: HTMLElement) {
 }
 
 async function renderWithMode(container: HTMLElement, ctx: LotContext) {
+  if (isContextInvalidated()) {
+    showInvalidatedNotice(container);
+    return;
+  }
+
   const auto = await getAutoLookupEnabled();
   const sig = `${ctx.description}|${ctx.bidText}|${auto}`;
   contexts.set(container, ctx);
@@ -580,7 +618,7 @@ if (window.self === window.top) {
     });
 
     // Re-render when settings (or the auto-lookup toggle) change in the popup or another tab.
-    chrome.storage.onChanged.addListener((_changes, area) => {
+    globalThis.chrome?.storage?.onChanged?.addListener((_changes, area) => {
       if (area === 'sync') rescanAll();
     });
   };

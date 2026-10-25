@@ -1,5 +1,6 @@
 import { DEFAULTS, TOKEN_KEY, setStored } from './settings';
 import { renderFavorites, renderQuota } from './popup_extras';
+import { storageGet } from './storage';
 
 const fields = ['commissionRate', 'adminFee', 'logisticsFee', 'towing', 'extraCosts', 'resaleDiscount', 'targetMargin'] as const;
 type Field = typeof fields[number];
@@ -11,15 +12,16 @@ const tokenInput = document.getElementById('fipeToken') as HTMLInputElement;
 const form = document.getElementById('config-form') as HTMLFormElement;
 const resetBtn = document.getElementById('reset') as HTMLButtonElement;
 const successMsg = document.getElementById('success') as HTMLDivElement;
+const errorMsg = document.getElementById('error') as HTMLDivElement;
 
-function loadSettings() {
-  chrome.storage.sync.get([...fields, TOKEN_KEY], (result) => {
-    for (const f of fields) {
-      const value = result[f];
-      inputs[f].value = String(typeof value === 'number' && value >= 0 ? value : DEFAULTS[f]);
-    }
-    tokenInput.value = typeof result[TOKEN_KEY] === 'string' ? result[TOKEN_KEY] : '';
-  });
+async function loadSettings() {
+  const res = await storageGet<Record<string, unknown>>('sync', [...fields, TOKEN_KEY]);
+  const result = res.ok && res.value ? res.value : {};
+  for (const f of fields) {
+    const value = result[f];
+    inputs[f].value = String(typeof value === 'number' && value >= 0 ? value : DEFAULTS[f]);
+  }
+  tokenInput.value = typeof result[TOKEN_KEY] === 'string' ? result[TOKEN_KEY] : '';
 }
 
 const MAX: Partial<Record<Field, number>> = { commissionRate: 100, resaleDiscount: 95, targetMargin: 1000 };
@@ -38,10 +40,16 @@ async function saveSettings() {
     inputs[f].value = String(values[f]);
   }
 
-  await setStored(values);
-  void renderQuota(); // the token decides which limit applies
-  successMsg.style.display = 'block';
-  setTimeout(() => { successMsg.style.display = 'none'; }, 2000);
+  const res = await setStored(values);
+  if (res.ok) {
+    errorMsg.style.display = 'none';
+    void renderQuota(); // the token decides which limit applies
+    successMsg.style.display = 'block';
+    setTimeout(() => { successMsg.style.display = 'none'; }, 2000);
+  } else {
+    successMsg.style.display = 'none';
+    errorMsg.style.display = 'block';
+  }
 }
 
 function resetDefaults() {
@@ -56,6 +64,6 @@ form.addEventListener('submit', (e) => {
 
 resetBtn.addEventListener('click', resetDefaults);
 
-loadSettings();
+void loadSettings();
 void renderQuota();
 void renderFavorites();
