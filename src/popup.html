@@ -8,9 +8,10 @@
     :root {
       --ink: #0f172a; --muted: #64748b; --line: #e2e8f0; --bg: #f8fafc; --surface: #fff;
       --accent: #4f46e5; --accent-strong: #4338ca; --good: #059669; --good-bg: #ecfdf5;
+      --bad: #dc2626; --bad-bg: #fef2f2;
     }
     @media (prefers-color-scheme: dark) {
-      :root { --ink: #f1f5f9; --muted: #94a3b8; --line: #334155; --bg: #0f172a; --surface: #1e293b; --accent: #818cf8; --accent-strong: #6366f1; --good: #34d399; --good-bg: #064e3b; }
+      :root { --ink: #f1f5f9; --muted: #94a3b8; --line: #334155; --bg: #0f172a; --surface: #1e293b; --accent: #818cf8; --accent-strong: #6366f1; --good: #34d399; --good-bg: #064e3b; --bad: #f87171; --bad-bg: #450a0a; }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 13px; width: 340px; background: var(--bg); color: var(--ink); }
@@ -54,6 +55,7 @@
     .fav-list .meta { grid-column: 1; font-size: 11px; color: var(--muted); }
     .fav-list button { grid-row: 1 / span 2; grid-column: 2; align-self: center; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 11px; cursor: pointer; text-decoration: underline; }
     .success-msg { display: none; margin-top: 10px; padding: 9px 12px; border-radius: 10px; background: var(--good-bg); color: var(--good); font-weight: 600; text-align: center; animation: pop .2s ease; }
+    .error-msg { display: none; margin-top: 10px; padding: 9px 12px; border-radius: 10px; background: var(--bad-bg); color: var(--bad); font-weight: 600; text-align: center; animation: pop .2s ease; }
     @keyframes pop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
   </style>
@@ -125,6 +127,7 @@
       <button type="submit" class="btn btn-primary">Salvar</button>
     </div>
     <div id="success" class="success-msg" role="status">Configurações salvas!</div>
+    <div id="error" class="error-msg" role="alert">Não foi possível salvar. Tente novamente.</div>
   </form>
   <section class="section favs" aria-labelledby="favsTitle">
     <h2 id="favsTitle">Lotes favoritos</h2>

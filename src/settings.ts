@@ -1,4 +1,5 @@
 import { Fees } from './lib';
+import { storageGet, storageSet, StorageSetResult } from './storage';
 
 export const DEFAULTS = {
   towing: 1500,
@@ -24,38 +25,35 @@ function num(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
-export function getSettings(): Promise<Fees> {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(FEE_KEYS, (r) => {
-      resolve({
-        towing: num(r.towing, DEFAULTS.towing),
-        extraCosts: num(r.extraCosts, DEFAULTS.extraCosts),
-        adminFee: num(r.adminFee, DEFAULTS.adminFee),
-        logisticsFee: num(r.logisticsFee, DEFAULTS.logisticsFee),
-        atpvFee: num(r.atpvFee, DEFAULTS.atpvFee),
-        commissionRate: num(r.commissionRate, DEFAULTS.commissionRate) / 100,
-        ipvaFee: num(r.ipvaFee, DEFAULTS.ipvaFee),
-        resaleDiscount: Math.min(num(r.resaleDiscount, DEFAULTS.resaleDiscount), 95) / 100,
-        targetMargin: num(r.targetMargin, DEFAULTS.targetMargin) / 100,
-      });
-    });
-  });
+export async function getSettings(): Promise<Fees> {
+  const res = await storageGet<Record<string, unknown>>('sync', FEE_KEYS);
+  const r = res.ok && res.value ? res.value : {};
+  return {
+    towing: num(r.towing, DEFAULTS.towing),
+    extraCosts: num(r.extraCosts, DEFAULTS.extraCosts),
+    adminFee: num(r.adminFee, DEFAULTS.adminFee),
+    logisticsFee: num(r.logisticsFee, DEFAULTS.logisticsFee),
+    atpvFee: num(r.atpvFee, DEFAULTS.atpvFee),
+    commissionRate: num(r.commissionRate, DEFAULTS.commissionRate) / 100,
+    ipvaFee: num(r.ipvaFee, DEFAULTS.ipvaFee),
+    resaleDiscount: Math.min(num(r.resaleDiscount, DEFAULTS.resaleDiscount), 95) / 100,
+    targetMargin: num(r.targetMargin, DEFAULTS.targetMargin) / 100,
+  };
 }
 
-export function getAutoLookupEnabled(): Promise<boolean> {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get([AUTO_LOOKUP_KEY], (r) => {
-      resolve(typeof r[AUTO_LOOKUP_KEY] === 'boolean' ? r[AUTO_LOOKUP_KEY] : true);
-    });
-  });
+export async function getAutoLookupEnabled(): Promise<boolean> {
+  const res = await storageGet<Record<string, unknown>>('sync', [AUTO_LOOKUP_KEY]);
+  if (!res.ok || !res.value) return true;
+  return typeof res.value[AUTO_LOOKUP_KEY] === 'boolean' ? res.value[AUTO_LOOKUP_KEY] : true;
 }
 
-export function setStored(values: Record<string, unknown>): Promise<void> {
-  return new Promise((resolve) => chrome.storage.sync.set(values, () => resolve()));
+export function setStored(values: Record<string, unknown>): Promise<StorageSetResult> {
+  return storageSet('sync', values);
 }
 
-export function getToken(): Promise<string> {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get([TOKEN_KEY], (r) => resolve(typeof r[TOKEN_KEY] === 'string' ? r[TOKEN_KEY].trim() : ''));
-  });
+export async function getToken(): Promise<string> {
+  const res = await storageGet<Record<string, unknown>>('sync', [TOKEN_KEY]);
+  if (!res.ok || !res.value) return '';
+  const token = res.value[TOKEN_KEY];
+  return typeof token === 'string' ? token.trim() : '';
 }
