@@ -53,3 +53,15 @@ manifest.json           # MV3, Chrome + Firefox (gecko id)
 - Rodar e2e: Chromium em `/opt/pw-browsers` (ou `CHROME_PATH`); não rodar `playwright install`.
 - O site do leilão retorna 403 para automação: use as fixtures de `e2e/fixtures.ts`, nunca scraping real.
 - Texto de UI em português (pt-BR).
+
+<!-- base-actions-main-policy -->
+## GitHub Actions — padrão obrigatório (@main)
+
+- Referencie as actions internas sempre pelo branch, nunca por SHA:
+  - `uses: juninmd/base-actions/<action>@main`
+  - `uses: juninmd/base-actions/.github/workflows/<arquivo>.yml@main`
+- Não fixe `@<sha>` em `juninmd/base-actions`: a atualização é centralizada no
+  `main` e passa a valer no próximo run.
+- PRs cujos checks não iniciam por billing/spending limit são mesclados pelo bot central
+  `juninmd/base-actions/.github/workflows/auto-merge-billing-blocked.yml`.
+  Para impedir o merge automático de um PR, aplique a label `do-not-merge`.
