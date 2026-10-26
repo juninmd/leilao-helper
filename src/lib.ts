@@ -29,6 +29,11 @@ export function parseAmount(text: string): number {
   return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
+/** The value of the auction's bid input: "12.500,00", "12500.00" and "12500" are all 12500. Invalid or negative text is 0. */
+export function parseBidInput(value: string): number {
+  return parseAmount(value);
+}
+
 /** Two-digit model year → four digits (anything beyond next year is assumed to be 19xx). */
 export function expandYear(twoDigits: number, now = new Date()): number {
   const current = now.getFullYear();

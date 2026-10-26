@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculate, expandYear, parseAmount, parseCurrency, parseDescription } from '../src/lib';
+import { calculate, expandYear, parseAmount, parseBidInput, parseCurrency, parseDescription } from '../src/lib';
 import { Fees } from '../src/lib';
 
 const fees: Fees = { towing: 1500, extraCosts: 0, adminFee: 1900, logisticsFee: 1416, atpvFee: 40, commissionRate: 0.05, ipvaFee: 0 };
@@ -133,5 +133,18 @@ describe('calculate', () => {
   it('zero bid and zero fees does not divide by zero', () => {
     const zero: Fees = { towing: 0, extraCosts: 0, adminFee: 0, logisticsFee: 0, atpvFee: 0, commissionRate: 0, ipvaFee: 0 };
     expect(calculate(1000, 0, zero).profitPercentage).toBe(0);
+  });
+});
+
+describe('parseBidInput (the auction bid input)', () => {
+  it('reads Brazilian and plain formats as the same amount', () => {
+    expect(parseBidInput('12.500,00')).toBe(12500);
+    expect(parseBidInput('12500.00')).toBe(12500);
+    expect(parseBidInput('12500')).toBe(12500);
+  });
+
+  it('turns invalid or negative text into 0', () => {
+    expect(parseBidInput('abc')).toBe(0);
+    expect(parseBidInput('-5')).toBe(0);
   });
 });

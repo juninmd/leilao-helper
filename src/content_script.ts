@@ -1,6 +1,6 @@
 import { FipeError, FipeService } from './fipe_service';
 import { CalculationResult } from './types';
-import { calculate, CURRENCY_PATTERN, extractCurrency, PageFees, parseCurrency, parseDescription } from './lib';
+import { calculate, CURRENCY_PATTERN, extractCurrency, PageFees, parseBidInput, parseCurrency, parseDescription } from './lib';
 import { getAutoLookupEnabled, getSettings, getToken, setStored, AUTO_LOOKUP_KEY } from './settings';
 import { isContextInvalidated, StorageSetResult } from './storage';
 import { categoryOf, Selection, showVehiclePicker } from './vehicle_picker';
@@ -166,8 +166,7 @@ function findBidText(root: ParentNode): string {
 
       const inputValue = (element as HTMLInputElement).value;
       if (inputValue) {
-        const normalized = inputValue.replace(',', '.');
-        const value = parseFloat(normalized);
+        const value = parseBidInput(inputValue);
         if (value > 0) {
           return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         }
