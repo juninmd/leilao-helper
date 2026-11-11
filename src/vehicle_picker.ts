@@ -22,7 +22,8 @@ interface Preset { category: Category; brandCode: string; modelCode: string | nu
 // Only one picker can be open; replacing it must also detach the old one's document listeners.
 let closeActive: (() => void) | null = null;
 
-const FOCUSABLE = 'input:not(:disabled), select:not(:disabled), button:not(:disabled)';
+// Only the checked radio of a group takes Tab focus.
+const FOCUSABLE = 'input:not(:disabled):not([type="radio"]:not(:checked)), select:not(:disabled), button:not(:disabled)';
 
 export function categoryOf(key: Selection['categoryKey']): Category {
   return FipeService.CATEGORIES.find(c => c.brasil === key) ?? FipeService.CATEGORIES[0];
@@ -34,25 +35,40 @@ export function showVehiclePicker(input: PickerInput, onSubmit: (selection: Sele
 
   const overlay = document.createElement('div');
   overlay.className = 'fipe-modal-overlay';
+  const icons: Record<Category['brasil'], string> = {
+    carros: 'M3 13l2-5a2 2 0 0 1 2-1.3h10A2 2 0 0 1 19 8l2 5v5h-2.5M3 13v5h2.5M3 13h18M7.5 18a1.5 1.5 0 1 0 0-.1M16.5 18a1.5 1.5 0 1 0 0-.1',
+    motos: 'M5 17a3 3 0 1 0 0-.1M19 17a3 3 0 1 0 0-.1M5 17l4-7h5l2 3M14 6h3l2 11M9 10 7 6H4',
+    caminhoes: 'M2 6h12v10H2zM14 9h4l4 4v3h-8M6 18a1.8 1.8 0 1 0 0-.1M17 18a1.8 1.8 0 1 0 0-.1',
+  };
+  const cats = FipeService.CATEGORIES.map(c => `<label class="fipe-cat"><input type="radio" name="fipe-category" value="${c.brasil}" /><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${icons[c.brasil]}"/></svg><span>${c.label}</span></label>`).join('');
+  const steps = [['category', 'Categoria'], ['brand', 'Marca'], ['model', 'Modelo'], ['year', 'Ano'], ['ipva', 'IPVA']]
+    .map(([key, label], i) => `<li data-step="${key}"><span class="fipe-step-dot" aria-hidden="true">${i + 1}</span><span class="fipe-step-text"><b>${label}</b><small></small></span></li>`).join('');
   overlay.innerHTML = `
     <div class="fipe-modal" role="dialog" aria-modal="true" aria-labelledby="fipe-modal-title" tabindex="-1">
-      <h3 id="fipe-modal-title">Consultar FIPE</h3>
-      <p class="fipe-modal-sub">Escolha o veículo na tabela FIPE. Já vem preenchido com o que detectamos no lote.</p>
-      <div class="fipe-modal-row fipe-field"><label for="fipe-category">Categoria</label><select id="fipe-category" name="category"></select></div>
-      <div class="fipe-modal-row" data-slot="brand"></div>
-      <div class="fipe-modal-row" data-slot="model"></div>
-      <div class="fipe-modal-row fipe-field"><label for="fipe-year">Ano<span class="fipe-req" aria-hidden="true"> *</span></label><select id="fipe-year" name="year" disabled></select></div>
-      <div class="fipe-modal-row fipe-field"><label for="fipe-ipva">IPVA (se não pago)</label><input id="fipe-ipva" name="ipva" type="number" min="0" step="0.01" placeholder="0" aria-describedby="fipe-ipva-hint" /><span id="fipe-ipva-hint" class="fipe-hint">Some só se o edital atribuir o IPVA ao comprador; a regra de débitos muda de leilão para leilão.</span></div>
-      <div class="fipe-modal-status" role="status" aria-live="polite"></div>
-      <div class="fipe-modal-actions">
-        <button type="button" class="fipe-modal-cancel">Cancelar</button>
-        <button type="button" class="fipe-modal-submit" disabled>Consultar</button>
+      <aside class="fipe-modal-rail">
+        <h3 id="fipe-modal-title">Selecionar veículo</h3>
+        <p class="fipe-modal-sub">Escolha o veículo na tabela FIPE. Já vem preenchido com o que detectamos no lote.</p>
+        <ol class="fipe-steps" aria-label="Progresso">${steps}</ol>
+      </aside>
+      <div class="fipe-modal-main">
+        <fieldset class="fipe-modal-row fipe-cats"><legend>Categoria</legend><div class="fipe-cat-grid">${cats}</div></fieldset>
+        <div class="fipe-modal-row" data-slot="brand"></div>
+        <div class="fipe-modal-row" data-slot="model"></div>
+        <div class="fipe-modal-row fipe-field"><label for="fipe-year">Ano<span class="fipe-req" aria-hidden="true"> *</span></label><select id="fipe-year" name="year" disabled></select></div>
+        <div class="fipe-modal-row fipe-field"><label for="fipe-ipva">IPVA (se não pago)</label><input id="fipe-ipva" name="ipva" type="number" min="0" step="0.01" placeholder="0" aria-describedby="fipe-ipva-hint" /><span id="fipe-ipva-hint" class="fipe-hint">Some só se o edital atribuir o IPVA ao comprador; a regra de débitos muda de leilão para leilão.</span></div>
+        <div class="fipe-modal-status" role="status" aria-live="polite"></div>
+        <div class="fipe-modal-actions">
+          <div class="fipe-modal-summary"><small>Seleção</small><span data-summary>Nada escolhido ainda</span></div>
+          <button type="button" class="fipe-modal-cancel">Cancelar</button>
+          <button type="button" class="fipe-modal-submit" disabled>Aplicar ao lote</button>
+        </div>
       </div>
     </div>`;
   document.body.appendChild(overlay);
 
   const dialog = overlay.querySelector<HTMLElement>('.fipe-modal')!;
-  const categorySel = overlay.querySelector<HTMLSelectElement>('#fipe-category')!;
+  const catInputs = [...overlay.querySelectorAll<HTMLInputElement>('input[name="fipe-category"]')];
+  const setCategoryInput = (key: Category['brasil']) => catInputs.forEach(i => { i.checked = i.value === key; });
   const yearSel = overlay.querySelector<HTMLSelectElement>('#fipe-year')!;
   const ipvaInput = overlay.querySelector<HTMLInputElement>('#fipe-ipva')!;
   const statusEl = overlay.querySelector<HTMLElement>('.fipe-modal-status')!;
@@ -68,10 +84,30 @@ export function showVehiclePicker(input: PickerInput, onSubmit: (selection: Sele
   overlay.querySelector('[data-slot="brand"]')!.append(brand.root);
   overlay.querySelector('[data-slot="model"]')!.append(model.root);
 
-  categorySel.replaceChildren(...FipeService.CATEGORIES.map(c => new Option(c.label, c.brasil)));
+  setCategoryInput(category.brasil);
   ipvaInput.value = input.ipvaFee ? String(input.ipvaFee) : '';
 
-  const syncSubmit = () => { submitBtn.disabled = !(brand.value && model.value && yearSel.value); };
+  const summaryEl = overlay.querySelector<HTMLElement>('[data-summary]')!;
+  /** Left rail: what is chosen so far, and which step comes next. */
+  function syncSteps() {
+    const year = yearSel.value ? yearSel.selectedOptions[0]?.textContent ?? '' : '';
+    const ipva = parseFloat(ipvaInput.value.replace(',', '.')) || 0;
+    const values: Record<string, string> = {
+      category: category.label, brand: brand.value?.name ?? '', model: model.value?.name ?? '', year,
+      ipva: ipva ? ipva.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'opcional',
+    };
+    const required = ['category', 'brand', 'model', 'year'];
+    const next = required.find(key => !values[key]) ?? 'ipva';
+    overlay.querySelectorAll<HTMLElement>('.fipe-steps li').forEach((li, i) => {
+      const key = li.dataset.step!;
+      const done = key === 'ipva' ? ipva > 0 : Boolean(values[key]);
+      li.dataset.state = done ? 'done' : key === next ? 'current' : 'todo';
+      li.querySelector('small')!.textContent = values[key] || '—';
+      li.querySelector('.fipe-step-dot')!.textContent = done ? '✓' : String(i + 1);
+    });
+    summaryEl.textContent = [values.brand, values.model, year.split(' ')[0]].filter(Boolean).join(' · ') || 'Nada escolhido ainda';
+  }
+  const syncSubmit = () => { submitBtn.disabled = !(brand.value && model.value && yearSel.value); syncSteps(); };
 
   function setStatus(message: string, retry?: () => void) {
     statusEl.textContent = message;
@@ -151,7 +187,7 @@ export function showVehiclePicker(input: PickerInput, onSubmit: (selection: Sele
 
   async function applyPreset(p: Preset) {
     category = p.category;
-    categorySel.value = category.brasil;
+    setCategoryInput(category.brasil);
     if (!await loadBrands()) return;
     brand.select(p.brandCode);
     if (!brand.value) return;
@@ -213,7 +249,8 @@ export function showVehiclePicker(input: PickerInput, onSubmit: (selection: Sele
     }
   };
 
-  categorySel.onchange = () => { interacted = true; category = categoryOf(categorySel.value as Category['brasil']); void loadBrands(); };
+  catInputs.forEach(input => { input.onchange = () => { if (!input.checked) return; interacted = true; category = categoryOf(input.value as Category['brasil']); void loadBrands(); }; });
+  ipvaInput.oninput = syncSteps;
   yearSel.onchange = () => { interacted = true; syncSubmit(); };
   cancelBtn.onclick = close;
   submitBtn.onclick = () => {

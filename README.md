@@ -8,19 +8,27 @@ Extensão para Chrome/Brave/Edge e Firefox (Manifest V3) que consulta a **Tabela
 
 - **Consulta FIPE automática** em cada lote (lista e página de detalhes), com o modelo FIPE encontrado e o mês de referência.
 - **Custos lidos da própria página** (comissão, despesas administrativas/operacionais, logística, "IPVA pago"); quando o lote não informa, usa os valores configurados no popup.
-- **Cálculo de lucro**: lance + comissão + despesas adm/org/dep + logística + custos extras + ATPV-e + guincho + IPVA (se não pago). Verde = lucro, vermelho = prejuízo.
+- **Cálculo de lucro**: lance + comissão + despesas adm/org/dep + logística + custos extras + ATPV-e + guincho + IPVA (se não pago). Verde = lucro, laranja = prejuízo (com ▲/▼, não só cor).
+- **Nota do negócio (0–100)**: anel animado com veredito (Excelente, Bom negócio, Apertado, Evite). Parte do retorno sobre o custo total (`30 + 1,4 × %`) e desconta 12 pontos por alerta de risco alto e 4 por alerta leve. Serve para comparar lotes; quem decide é o edital.
+- **Para onde vai a revenda**: barra que divide a revenda em lance, comissão, taxas fixas e lucro (ou marca onde a revenda fica abaixo do custo).
+- **Simulador de lance**: deslize o lance e veja lucro, nota, detalhamento e folga até o lance máximo mudarem na hora. A faixa verde vai até o lance máximo; *Voltar ao atual* restaura o lance da página.
+- **Radar do leilão** (lista de lotes): barra acima dos lotes com quantos têm FIPE, quantas oportunidades (nota ≥ 55), quantos têm risco alto e qual é o melhor (selo *Melhor do leilão* no card). Ordena por maior lucro ou maior nota sem mexer no HTML do site (só a ordem visual), destaca só as oportunidades e leva até o melhor lote.
 - **Lance máximo recomendado**: o maior lance que ainda não dá prejuízo contra a FIPE, já com comissão e todas as despesas (`(FIPE − custos fixos) / (1 + comissão)`, arredondado para baixo no centavo). Mostra a folga sobre o lance atual ou quanto ele já excede; "Inviável" quando os custos fixos superam a FIPE.
 - **Revenda e meta (popup)**: *Desconto na revenda sobre a FIPE* (carro de leilão costuma vender abaixo da tabela) e *Lucro-alvo sobre o custo total*. O lucro passa a ser medido contra `FIPE × (1 − desconto)` e o lance máximo garante a meta: `(revenda / (1 + meta) − custos fixos) / (1 + comissão)`. Reparos entram em *Custos Extras*. Com os dois em 0 nada muda.
 - **Alertas de risco**: chips com palavras de risco do texto do lote (sucata, sinistro, alagamento, danos estruturais, sem documentação, Renajud, motor, "débitos até R$ X por conta do comprador"). Frases negadas ("sem sinistro") não contam, e o aviso genérico que o Freitas repete em todos os lotes ("sinistros já ocorridos em qualquer classificação de monta") é ignorado. É um ponteiro para o edital, não um veredito.
-- **Meu lote** (página de detalhe): favoritar, **checklist de compra** (edital, débitos e restrições, vistoria, credenciamento da leiloeira, documentação, valor à vista), **lance-alvo** comparado ao lance máximo e anotações. Tudo fica só neste navegador. Os favoritos aparecem no popup.
-- **Visual moderno**: o lucro estimado em destaque (valor + %), cartões de *Valor FIPE* e *Custo Total*, e o **detalhamento dos custos recolhível** (o estado aberto/fechado é mantido quando o lance atualiza). Chave liga/desliga para a consulta automática, *skeleton* de carregamento, alertas amarelos para erros, modal com foco visível e respeito a `prefers-reduced-motion`. O popup tem tema claro/escuro automático.
+- **Meu lote** (página de detalhe, aba do card): favoritar, **checklist de compra** (edital, débitos e restrições, vistoria, credenciamento da leiloeira, documentação, valor à vista), **lance-alvo** comparado ao lance máximo e anotações. Tudo fica só neste navegador. Os favoritos aparecem no popup.
+- **Visual "cockpit noturno"**: card escuro que se destaca na página clara do leilão, números tabulares, lucro que conta a partir de zero, anel e barras animados, chips de risco que surgem em sequência. Abas *Detalhamento dos custos* e *Meu lote* (a aba aberta é mantida quando o lance atualiza), chave *Auto* para a consulta automática, *skeleton* com brilho de carregamento e alertas com ícone e ação. Tudo respeita `prefers-reduced-motion`.
 - **Match inteligente**: normaliza acentos, entende abreviações do leilão (`VW`, `GM`, `M.BENZ`, `I/` de importado), mantém cilindrada (`1.0`) e testa as variantes mais parecidas até achar o ano do modelo (±1 ano como fallback). Procura em carros, motos e caminhões.
 - **Tabelas de de-para** (`src/depara.ts`): o leilão imprime o nome do Detran (cortado em ~20 caracteres, sem vogais/espaços: `HB20S 10M EVOLUTI`, `CRETA1TF`, `KGOO`). O matcher lê motor (`10`→1.0, `1016`→1.0 + 16v), palavras cortadas, siglas (`MT`, `HL`, `TB`), marcas (`VW`, `GM`, `LR`, `H-D`) e a marca depois do `I/` de importados, escolhe a melhor categoria (carro, moto, caminhão) e marca **aproximado** quando só a família do modelo casou ou o ano usado foi o vizinho. Reboques (`SR/`) são ignorados sem gastar cota. Em ~500 descrições reais de lotes, a taxa de achados passou de 57% para 98%.
-- **Modo manual / Selecionar veículo**: desligue a "Consulta automática" ou clique em **Selecionar veículo** para escolher o veículo direto na tabela FIPE: **categoria** (carros, motos, caminhões) → **marca** → **modelo** (busca com filtro por vários termos, sem acento e sem diferenciar maiúsculas; mostra até 50 resultados e informa o total) → **ano** (os anos reais daquele modelo). Já abre preenchido com o que foi detectado no lote, funciona só com o teclado (↑ ↓ Home End Enter Esc, foco preso no diálogo) e a consulta usa os códigos FIPE exatos. Também informa o IPVA.
-- **Erros tratados**: "FIPE não encontrada" (mostra só os custos, sem lucro falso), limite da API excedido e falta de conexão, ambos com **Tentar novamente**.
-- **Popup de configurações** com atualização imediata nas abas abertas.
+- **Modo manual / Selecionar veículo**: desligue a "Consulta automática" ou clique em **Selecionar veículo** para escolher o veículo direto na tabela FIPE, num diálogo com trilha de etapas (o que já foi escolhido, o que falta) e resumo da seleção: **categoria** (cartões carros, motos, caminhões) → **marca** → **modelo** (busca com filtro por vários termos, sem acento e sem diferenciar maiúsculas; mostra até 50 resultados e informa o total) → **ano** (os anos reais daquele modelo). Já abre preenchido com o que foi detectado no lote, funciona só com o teclado (↑ ↓ Home End Enter Esc, foco preso no diálogo) e a consulta usa os códigos FIPE exatos. Também informa o IPVA.
+- **Erros tratados**: "FIPE não encontrada" (mostra só os custos, sem lucro falso, com atalho para *Selecionar veículo*), limite da API excedido e falta de conexão, ambos com **Tentar novamente**. No modo manual, *Consultar este lote* faz uma consulta avulsa sem religar o automático.
+- **Popup em abas** (*Custos*, *Favoritos*, *API*): **prévia ao vivo** do lance máximo de um carro de FIPE R$ 30.000 enquanto você mexe nas taxas, controles deslizantes para desconto na revenda e lucro-alvo, anel da cota diária, favoritos com progresso do checklist. Atualiza na hora as abas abertas.
 
-**Detalhamento dos custos** (recolhível):
+| Simulador de lance | Radar do leilão |
+|---|---|
+| ![](docs/screenshots/19-simulador-de-lance.png) | ![](docs/screenshots/18-radar-do-leilao.png) |
+
+**Detalhamento dos custos** (aba):
 
 ![Detalhamento dos custos](docs/screenshots/11-detalhamento-custos.png)
 
@@ -38,6 +46,13 @@ Extensão para Chrome/Brave/Edge e Firefox (Manifest V3) que consulta a **Tabela
 
 ## 🚀 Instalação
 
+**Pela release (recomendado):** baixe da [última release](https://github.com/juninmd/leilao-helper/releases/latest):
+
+- **Firefox:** `leilao-helper-X.Y.Z-firefox.xpi` (assinado). Arraste para o Firefox; as versões seguintes **instalam sozinhas** (o `.xpi` aponta para o `updates.json` da última release).
+- **Chrome / Brave / Edge:** `leilao-helper-X.Y.Z-chrome.zip`. Extraia numa pasta e use *Carregar sem compactação*. O Chrome não atualiza sozinho extensões fora da Chrome Web Store, então o ícone ganha um **↑** e o popup mostra *Versão X disponível* com o link; para atualizar, extraia o `.zip` novo por cima da mesma pasta e clique em *Recarregar*. Se a extensão for publicada na Web Store (segredos `CWS_*`), a loja passa a atualizar sozinha.
+
+### A partir do código
+
 Requisitos: Node.js 22 (versão usada no CI) e pnpm 10 (`packageManager` do `package.json`).
 
 ```bash
@@ -48,6 +63,25 @@ pnpm build        # gera dist/
 **Chrome / Brave / Edge:** `chrome://extensions` → ative o *Modo do desenvolvedor* → *Carregar sem compactação* → selecione a pasta do projeto.
 
 **Firefox (140+):** `about:debugging#/runtime/this-firefox` → *Carregar extensão temporária…* → selecione `manifest.json`. Ou `pnpm dev` (web-ext).
+
+## 🏷️ Versões e atualização automática
+
+A versão sai dos **commits semânticos** ([Conventional Commits](https://www.conventionalcommits.org/pt-br/)). A cada push no branch principal, `release.yml` lê os commits desde a última tag `vX.Y.Z`:
+
+| Commit | Versão |
+|---|---|
+| `feat: …` | minor (1.1.0 → 1.2.0) |
+| `fix: …`, `perf: …`, `revert: …` | patch (1.1.0 → 1.1.1) |
+| `feat!: …` ou rodapé `BREAKING CHANGE:` | major (1.1.0 → 2.0.0) |
+| `chore`, `docs`, `ci`, `test`, `refactor`, `style`, `build`, merges | sem release |
+
+Ele roda os testes, gera os pacotes com a versão no `manifest.json`, cria a tag e a release com notas agrupadas (Novidades, Correções) e anexa:
+
+- `leilao-helper-X.Y.Z-chrome.zip`;
+- `leilao-helper-X.Y.Z-firefox.xpi` + `updates.json`, com o `.xpi` assinado na AMO no canal *unlisted* quando os segredos `AMO_JWT_ISSUER` e `AMO_JWT_SECRET` existem (sem eles sai `…-firefox-unsigned.zip`, que o Firefox comum não instala);
+- envio para a Chrome Web Store, se existirem `CWS_EXTENSION_ID`, `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET` e `CWS_REFRESH_TOKEN`.
+
+A tag é a fonte da versão: o `manifest.json` do repositório continua com a versão base e não recebe commit de bump. Dentro da extensão, um *service worker* consulta `api.github.com/repos/juninmd/leilao-helper/releases/latest` a cada 12 h (cache em `storage.local`, nunca quebra sem rede), marca **↑** no ícone e o popup mostra o aviso e o botão *Verificar atualizações* (aba API). Teste local do empacotamento: `pnpm build && pnpm release next && pnpm release package 1.2.3`.
 
 ## ⚙️ Configuração (popup)
 
@@ -90,7 +124,7 @@ Estrutura: `src/content_script.ts` (UI nas páginas), `src/vehicle_picker.ts` + 
 | `CI` (`ci.yml`) | Node 22, `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm lint:ext` e o e2e do Playwright com a extensão no Chromium |
 | `Validate` (`validate.yml`) | Reutiliza `juninmd/base-actions` (`reusable-validate.yml`): validação do PR (lint apenas como aviso) e auditoria de dependências, nível `high` bloqueante |
 | `Security Scan` (`security.yml`) | Gitleaks via `juninmd/base-actions` (`reusable-security-scan.yml`), em push para `main`/`master` |
-| `Release Drafter` (`release-drafter.yml`) | Mantém o rascunho de release atualizado; não bloqueia |
+| `Release` (`release.yml`) | Push no branch principal: versão pelos commits semânticos, testes, pacotes Chrome/Firefox, tag `vX.Y.Z` e release. Sem `feat`/`fix`/breaking desde a última tag, não publica nada |
 
 ## ✅ Homologação
 

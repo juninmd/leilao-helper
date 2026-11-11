@@ -3,136 +3,218 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Leilão FIPE Helper - Configurações</title>
+  <title>Astral Comet - Configurações</title>
   <style>
     :root {
-      --ink: #0f172a; --muted: #64748b; --line: #e2e8f0; --bg: #f8fafc; --surface: #fff;
-      --accent: #4f46e5; --accent-strong: #4338ca; --good: #059669; --good-bg: #ecfdf5;
-      --bad: #dc2626; --bad-bg: #fef2f2;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root { --ink: #f1f5f9; --muted: #94a3b8; --line: #334155; --bg: #0f172a; --surface: #1e293b; --accent: #818cf8; --accent-strong: #6366f1; --good: #34d399; --good-bg: #064e3b; --bad: #f87171; --bad-bg: #450a0a; }
+      --bg: #0c1022; --surface: #11162c; --surface-2: #161c38; --line: #222846; --line-2: #2e355a;
+      --ink: #f3f5ff; --soft: #c4cae6; --muted: #9aa3c7; --accent: #9d8cff; --accent-ink: #0c1022;
+      --good: #43e5a0; --good-ink: #06281a; --bad: #ff8a65; --warn: #ffc861;
+      --ease: cubic-bezier(.2, .8, .2, 1);
+      color-scheme: dark;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 13px; width: 340px; background: var(--bg); color: var(--ink); }
-    header { display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px; background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; }
-    .logo { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,.18); font-size: 18px; }
-    h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; }
-    header p { font-size: 11px; opacity: .8; margin-top: 1px; }
-    form { padding: 12px 16px 16px; }
-    .section { margin-bottom: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
-    .section h2 { margin-bottom: 8px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 13px; width: 360px; min-height: 480px; background: var(--bg); color: var(--ink); }
+    .num { font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+    header { display: flex; align-items: center; gap: 12px; padding: 18px 18px 12px; }
+    .orbit { animation: spin 9s linear infinite; transform-origin: 20px 20px; }
+    h1 { font-size: 17px; font-weight: 700; }
+    header p { font-size: 12px; color: var(--muted); }
+    .tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin: 0 18px; padding: 4px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+    .tab { min-height: 38px; border: 0; border-radius: 10px; background: transparent; color: var(--soft); font: inherit; font-weight: 600; cursor: pointer; transition: background .25s ease, color .25s ease; }
+    .tab[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+    .tab:focus-visible, .btn:focus-visible, input:focus-visible, a:focus-visible, .fav-list button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    [role="tabpanel"] { padding: 16px 18px 0; display: flex; flex-direction: column; gap: 14px; animation: fade .35s var(--ease) both; }
+    [role="tabpanel"][hidden] { display: none; }
+    .preview { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 18px; background: #16153a; border: 1px solid #3a3270; }
+    .preview .kicker { font-size: 10px; font-weight: 700; letter-spacing: .12em; color: #c9c0ff; }
+    .preview .line { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .preview .line span:first-child { font-size: 12px; color: var(--soft); }
+    .preview #previewMax { font-size: 24px; font-weight: 700; color: var(--good); transition: color .2s; }
+    .preview #previewMax.bad { color: var(--bad); }
+    .preview .sub { font-size: 11px; color: var(--soft); }
+    .section h2 { margin-bottom: 8px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
     .form-group { margin-bottom: 10px; }
     .form-group:last-child { margin-bottom: 0; }
     label { display: block; margin-bottom: 4px; font-size: 12px; font-weight: 600; }
     .field { position: relative; }
     .field .affix { position: absolute; top: 50%; transform: translateY(-50%); font-size: 12px; font-weight: 600; color: var(--muted); pointer-events: none; }
-    .field .affix.pre { left: 11px; }
-    .field .affix.post { right: 11px; }
-    .field.has-pre input { padding-left: 32px; }
-    .field.has-post input { padding-right: 28px; }
-    input[type="number"], input[type="text"] { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; font: inherit; font-size: 13px; background: var(--bg); color: var(--ink); transition: border-color .15s, box-shadow .15s; }
-    input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(129, 140, 248, .3); background: var(--surface); }
-    input:invalid { border-color: #dc2626; }
+    .field .affix.pre { left: 12px; }
+    .field .affix.post { right: 12px; }
+    .field.has-pre input { padding-left: 34px; }
+    .field.has-post input { padding-right: 30px; }
+    input[type="number"], input[type="text"] { width: 100%; min-height: 40px; padding: 0 12px; border: 1px solid var(--line-2); border-radius: 12px; font: inherit; font-size: 14px; background: var(--surface); color: var(--ink); transition: border-color .15s, box-shadow .15s; }
+    input[type="number"] { font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif; font-weight: 600; font-variant-numeric: tabular-nums; }
+    input::placeholder { color: #6c769e; }
+    input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(157, 140, 255, .3); }
+    input:invalid { border-color: var(--bad); }
+    .slider-row { display: grid; grid-template-columns: minmax(0, 1fr) 92px; gap: 10px; align-items: center; }
+    input[type="range"] { width: 100%; height: 28px; accent-color: var(--accent); cursor: pointer; }
     .hint { margin-top: 4px; font-size: 11px; color: var(--muted); }
-    .actions { display: flex; gap: 8px; }
-    .btn { flex: 1; padding: 10px; border: 0; border-radius: 10px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s, transform .1s; }
-    .btn:active { transform: scale(.98); }
-    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .btn-primary { flex: 1.6; background: var(--accent-strong); color: #fff; }
-    .btn-primary:hover { background: var(--accent); }
-    .btn-secondary { background: var(--line); color: var(--ink); }
-    .btn-secondary:hover { filter: brightness(.95); }
-    .quota { font-size: 12px; font-weight: 600; }
-    .quota-bar { margin-top: 5px; height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
-    .quota-bar i { display: block; height: 100%; width: 0; background: var(--good); transition: width .2s; }
-    .quota-bar i.high { background: #d97706; }
-    .favs { margin: 0 16px 16px; }
-    .fav-list { list-style: none; display: grid; gap: 6px; }
-    .fav-list li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
-    .fav-list a { color: var(--accent); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
-    .fav-list a:hover, .fav-list a:focus-visible { text-decoration: underline; }
-    .fav-list .meta { grid-column: 1; font-size: 11px; color: var(--muted); }
-    .fav-list button { grid-row: 1 / span 2; grid-column: 2; align-self: center; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 11px; cursor: pointer; text-decoration: underline; }
-    .success-msg { display: none; margin-top: 10px; padding: 9px 12px; border-radius: 10px; background: var(--good-bg); color: var(--good); font-weight: 600; text-align: center; animation: pop .2s ease; }
-    .error-msg { display: none; margin-top: 10px; padding: 9px 12px; border-radius: 10px; background: var(--bad-bg); color: var(--bad); font-weight: 600; text-align: center; animation: pop .2s ease; }
-    @keyframes pop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .actions { position: sticky; bottom: 0; display: flex; gap: 8px; margin-top: 4px; padding: 12px 18px 16px; background: linear-gradient(180deg, rgba(12, 16, 34, 0), var(--bg) 30%); }
+    body[data-tab="favs"] .actions { display: none; }
+    .btn { flex: 1; min-height: 44px; border: 1px solid var(--line-2); border-radius: 14px; font: inherit; font-weight: 700; cursor: pointer; transition: background .2s, transform .15s; }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { flex: 1.4; background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+    .btn-primary:hover { background: #b3a6ff; }
+    .btn-secondary { background: transparent; color: var(--ink); }
+    .btn-secondary:hover { border-color: var(--accent); }
+    .quota-card { display: flex; gap: 14px; align-items: center; padding: 14px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); }
+    .ring { position: relative; flex: none; width: 84px; height: 84px; }
+    .ring svg { width: 84px; height: 84px; transform: rotate(-90deg); }
+    .ring circle { fill: none; stroke-width: 8; }
+    .ring .bg { stroke: #1f2542; }
+    #quotaFill { --p: 0; stroke: var(--good); stroke-linecap: round; stroke-dasharray: 226.2; stroke-dashoffset: calc(226.2 * (1 - var(--p))); transition: stroke-dashoffset .8s var(--ease), stroke .3s; }
+    #quotaFill.high { stroke: var(--warn); }
+    .ring b { position: absolute; inset: 0; display: grid; place-content: center; font-size: 16px; }
+    .quota { font-size: 13px; font-weight: 600; }
+    .favs { gap: 10px; padding-bottom: 18px; }
+    .update { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; margin: 0 18px 12px; padding: 12px 14px; border-radius: 16px; background: rgba(67, 229, 160, .12); border: 1px solid rgba(67, 229, 160, .4); color: #7ff0bf; animation: fade .4s var(--ease) both; }
+    .update[hidden] { display: none; }
+    .update strong { display: block; color: var(--ink); font-size: 13px; }
+    .update span { display: block; font-size: 11px; color: var(--soft); }
+    .update a { padding: 8px 12px; border-radius: 10px; background: var(--good); color: var(--good-ink); font-weight: 700; font-size: 12px; text-decoration: none; white-space: nowrap; }
+    .version { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 10px; margin: 14px 18px 0; font-size: 11px; color: var(--muted); }
+    body:not([data-tab="api"]) .version { display: none; }
+    .link-btn { min-height: 32px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: 10px; background: transparent; color: var(--soft); font: inherit; font-weight: 600; cursor: pointer; }
+    .link-btn:hover { border-color: var(--accent); color: var(--ink); }
+    .link-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .fav-title { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    .fav-list { list-style: none; display: grid; gap: 8px; }
+    .fav-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; padding: 12px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); animation: fade .35s var(--ease) both; transition: background .2s; }
+    .fav-list li:hover { background: #141a34; }
+    .fav-list a { color: #c9c0ff; font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+    .fav-list a:hover { color: #dcd6ff; text-decoration: underline; }
+    .fav-list .meta { grid-column: 1; font-size: 12px; color: var(--soft); }
+    .fav-list .bar { grid-column: 1; height: 6px; border-radius: 99px; background: #1a2040; overflow: hidden; }
+    .fav-list .bar i { display: block; height: 100%; border-radius: 99px; background: var(--accent); transition: width .45s var(--ease); }
+    .fav-list .bar i.full { background: var(--good); }
+    .fav-list button { grid-row: 1 / span 3; grid-column: 2; align-self: center; min-height: 36px; padding: 0 12px; border: 1px solid var(--line-2); border-radius: 10px; background: transparent; color: #ffb4a0; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .fav-list button:hover { border-color: var(--bad); }
+    .empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 18px; border: 1px dashed var(--line-2); border-radius: 16px; text-align: center; color: var(--muted); }
+    .empty[hidden] { display: none; }
+    .empty strong { color: var(--ink); font-size: 14px; }
+    .toast { display: none; position: fixed; left: 18px; right: 18px; bottom: 18px; z-index: 5; padding: 14px 16px; border-radius: 14px; font-weight: 700; box-shadow: 0 16px 40px rgba(0, 0, 0, .45); align-items: center; gap: 10px; animation: toast .35s var(--ease) both; }
+    .success-msg { background: var(--good); color: var(--good-ink); }
+    .error-msg { background: var(--bad); color: #2e0e04; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    @keyframes toast { from { opacity: 0; transform: translateY(16px) scale(.96); } to { opacity: 1; transform: none; } }
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
   </style>
 </head>
-<body>
+<body data-tab="costs">
   <header>
-    <div class="logo" aria-hidden="true">🚗</div>
+    <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17" fill="none" stroke="#2a3156" stroke-width="1.5"/><g class="orbit"><circle cx="20" cy="3" r="3" fill="#9d8cff"/></g><path d="M11 27 22 16M14 29l11-11" stroke="#43e5a0" stroke-width="2.4" stroke-linecap="round"/><circle cx="26" cy="14" r="4.5" fill="#f3f5ff"/></svg>
     <div>
-      <h1>Leilão FIPE Helper</h1>
-      <p>Configurações de custos</p>
+      <h1>Astral Comet</h1>
+      <p>Leilão FIPE Helper</p>
     </div>
   </header>
+  <div class="update" id="updateBanner" role="status" hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+    <div>
+      <strong id="updateTitle">Nova versão disponível</strong>
+      <span id="updateHow"></span>
+    </div>
+    <a id="updateLink" href="https://github.com/juninmd/leilao-helper/releases/latest" target="_blank" rel="noopener noreferrer">Ver novidades</a>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Seções">
+    <button type="button" class="tab" role="tab" id="tab-costs" aria-controls="panel-costs" aria-selected="true">Custos</button>
+    <button type="button" class="tab" role="tab" id="tab-favs" aria-controls="panel-favs" aria-selected="false" tabindex="-1">Favoritos <span id="favCount" class="num"></span></button>
+    <button type="button" class="tab" role="tab" id="tab-api" aria-controls="panel-api" aria-selected="false" tabindex="-1">API</button>
+  </div>
   <form id="config-form">
-    <div class="section">
-      <h2>Taxas do leilão</h2>
-      <div class="form-group">
-        <label for="commissionRate">Comissão Leiloeiro (%)</label>
-        <div class="field has-post"><input type="number" id="commissionRate" step="0.01" min="0" max="100"><span class="affix post">%</span></div>
+    <div role="tabpanel" id="panel-costs" aria-labelledby="tab-costs">
+      <div class="preview" aria-live="polite">
+        <span class="kicker">PRÉVIA AO VIVO</span>
+        <span class="sub">Carro com FIPE de <span class="num">R$ 30.000,00</span>:</span>
+        <div class="line"><span>Lance máximo</span><span id="previewMax" class="num">…</span></div>
+        <span class="sub" id="previewSub"></span>
       </div>
-      <div class="form-group">
-        <label for="adminFee">Despesas Adm/Org/Dep (R$)</label>
-        <div class="field has-pre"><span class="affix pre">R$</span><input type="number" id="adminFee" step="0.01" min="0"></div>
+      <div class="section">
+        <h2>Taxas do leilão</h2>
+        <div class="form-group">
+          <label for="commissionRate">Comissão Leiloeiro (%)</label>
+          <div class="field has-post"><input type="number" id="commissionRate" step="0.01" min="0" max="100"><span class="affix post">%</span></div>
+        </div>
+        <div class="form-group">
+          <label for="adminFee">Despesas Adm/Org/Dep (R$)</label>
+          <div class="field has-pre"><span class="affix pre">R$</span><input type="number" id="adminFee" step="0.01" min="0"></div>
+        </div>
+        <div class="form-group">
+          <label for="logisticsFee">Despesas Logística (R$)</label>
+          <div class="field has-pre"><span class="affix pre">R$</span><input type="number" id="logisticsFee" step="0.01" min="0"></div>
+          <p class="hint">Usadas só quando o lote não informa o valor.</p>
+        </div>
       </div>
-      <div class="form-group">
-        <label for="logisticsFee">Despesas Logística (R$)</label>
-        <div class="field has-pre"><span class="affix pre">R$</span><input type="number" id="logisticsFee" step="0.01" min="0"></div>
-        <p class="hint">Usadas só quando o lote não informa o valor.</p>
+      <div class="section">
+        <h2>Seus custos</h2>
+        <div class="form-group">
+          <label for="towing">Guincho (R$)</label>
+          <div class="field has-pre"><span class="affix pre">R$</span><input type="number" id="towing" step="0.01" min="0"></div>
+        </div>
+        <div class="form-group">
+          <label for="extraCosts">Custos Extras (R$)</label>
+          <div class="field has-pre"><span class="affix pre">R$</span><input type="number" id="extraCosts" step="0.01" min="0"></div>
+          <p class="hint">Reparos estimados, documentação e outros gastos por veículo.</p>
+        </div>
+      </div>
+      <div class="section">
+        <h2>Revenda e meta</h2>
+        <div class="form-group">
+          <label for="resaleDiscount">Desconto na revenda sobre a FIPE (%)</label>
+          <div class="slider-row">
+            <input type="range" id="resaleDiscountRange" min="0" max="50" step="1" aria-label="Desconto na revenda (deslizante)">
+            <div class="field has-post"><input type="number" id="resaleDiscount" step="0.01" min="0" max="95"><span class="affix post">%</span></div>
+          </div>
+          <p class="hint">Carro de leilão costuma revender abaixo da FIPE. 0 = usa a FIPE cheia.</p>
+        </div>
+        <div class="form-group">
+          <label for="targetMargin">Lucro-alvo sobre o custo total (%)</label>
+          <div class="slider-row">
+            <input type="range" id="targetMarginRange" min="0" max="100" step="1" aria-label="Lucro-alvo (deslizante)">
+            <div class="field has-post"><input type="number" id="targetMargin" step="0.01" min="0" max="1000"><span class="affix post">%</span></div>
+          </div>
+          <p class="hint">O lance máximo passa a garantir esse lucro. 0 = só evitar prejuízo.</p>
+        </div>
       </div>
     </div>
-    <div class="section">
-      <h2>Seus custos</h2>
-      <div class="form-group">
-        <label for="towing">Guincho (R$)</label>
-        <div class="field has-pre"><span class="affix pre">R$</span><input type="number" id="towing" step="0.01" min="0"></div>
+    <div role="tabpanel" id="panel-api" aria-labelledby="tab-api" hidden>
+      <div class="quota-card">
+        <div class="ring"><svg viewBox="0 0 84 84" aria-hidden="true"><circle class="bg" cx="42" cy="42" r="36"/><circle id="quotaFill" cx="42" cy="42" r="36"/></svg><b class="num" id="quotaPct"></b></div>
+        <div>
+          <div class="quota" role="status"><span id="quotaText">Consultas hoje: …</span></div>
+          <p class="hint" id="quotaHint"></p>
+        </div>
       </div>
-      <div class="form-group">
-        <label for="extraCosts">Custos Extras (R$)</label>
-        <div class="field has-pre"><span class="affix pre">R$</span><input type="number" id="extraCosts" step="0.01" min="0"></div>
-        <p class="hint">Reparos estimados, documentação e outros gastos por veículo.</p>
-      </div>
-    </div>
-    <div class="section">
-      <h2>Revenda e meta</h2>
-      <div class="form-group">
-        <label for="resaleDiscount">Desconto na revenda sobre a FIPE (%)</label>
-        <div class="field has-post"><input type="number" id="resaleDiscount" step="0.01" min="0" max="95"><span class="affix post">%</span></div>
-        <p class="hint">Carro de leilão costuma revender abaixo da FIPE. 0 = usa a FIPE cheia.</p>
-      </div>
-      <div class="form-group">
-        <label for="targetMargin">Lucro-alvo sobre o custo total (%)</label>
-        <div class="field has-post"><input type="number" id="targetMargin" step="0.01" min="0" max="1000"><span class="affix post">%</span></div>
-        <p class="hint">O lance máximo passa a garantir esse lucro. 0 = só evitar prejuízo.</p>
+      <div class="section">
+        <h2>API FIPE</h2>
+        <div class="form-group">
+          <label for="fipeToken">Token API FIPE (opcional)</label>
+          <input type="text" id="fipeToken" autocomplete="off" placeholder="fipe.api.br">
+          <p class="hint">Grátis em fipe.api.br. Dobra a cota diária de 500 para 1.000 consultas. Fica só no seu navegador.</p>
+        </div>
       </div>
     </div>
-    <div class="section">
-      <h2>API FIPE</h2>
-      <div class="form-group">
-        <label for="fipeToken">Token API FIPE (opcional)</label>
-        <input type="text" id="fipeToken" autocomplete="off" placeholder="fipe.api.br">
-        <p class="hint">Aumenta o limite diário de consultas.</p>
-      </div>
-      <div class="form-group">
-        <div class="quota" role="status"><span id="quotaText">Consultas hoje: …</span><div class="quota-bar" aria-hidden="true"><i id="quotaFill"></i></div></div>
-        <p class="hint" id="quotaHint"></p>
-      </div>
+    <div class="version" id="panel-version">
+      <span>Versão <b id="versionText" class="num"></b> · <span id="updateStatus" role="status"></span></span>
+      <button type="button" id="checkUpdate" class="link-btn">Verificar atualizações</button>
     </div>
     <div class="actions">
       <button type="button" id="reset" class="btn btn-secondary">Restaurar Padrões</button>
       <button type="submit" class="btn btn-primary">Salvar</button>
     </div>
-    <div id="success" class="success-msg" role="status">Configurações salvas!</div>
-    <div id="error" class="error-msg" role="alert">Não foi possível salvar. Tente novamente.</div>
+    <div id="success" class="toast success-msg" role="status">Configurações salvas! Os cards abertos já recalcularam.</div>
+    <div id="error" class="toast error-msg" role="alert">Não foi possível salvar. Tente novamente.</div>
   </form>
-  <section class="section favs" aria-labelledby="favsTitle">
-    <h2 id="favsTitle">Lotes favoritos</h2>
+  <section role="tabpanel" id="panel-favs" class="favs" aria-labelledby="tab-favs" hidden>
+    <h2 id="favsTitle" class="fav-title">Lotes favoritos</h2>
     <ul id="favList" class="fav-list"></ul>
-    <p class="hint" id="favEmpty">Nenhum favorito. Abra um lote e clique em ☆ Favoritar.</p>
+    <div class="empty" id="favEmpty">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z"/></svg>
+      <strong>Nenhum favorito</strong>
+      <span>Abra um lote, vá em “Meu lote” e toque em Favoritar lote.</span>
+    </div>
   </section>
   <script src="popup.global.js"></script>
 </body>

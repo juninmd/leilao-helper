@@ -1,6 +1,7 @@
-import { LotStore, safeLotUrl } from './lot_store';
+import { CHECKLIST, LotStore, safeLotUrl } from './lot_store';
 import { chromeBackend, readUsage } from './persistent_cache';
 import { getToken } from './settings';
+import { checkForUpdate, currentVersion, showBadge, UpdateStatus } from './update_check';
 
 // Documented FIPE v2 daily limits (fipe.api.br): 500 unauthenticated, 1.000 with the free token.
 export const DAILY_LIMIT = { anon: 500, token: 1000 };
@@ -19,8 +20,10 @@ export async function renderQuota(): Promise<void> {
   const limit = token ? DAILY_LIMIT.token : DAILY_LIMIT.anon;
   const ratio = Math.min(used / limit, 1);
   text.textContent = `Consultas hoje: ${used} de ${limit} (aprox.)`;
-  fill.style.width = `${Math.round(ratio * 100)}%`;
+  fill.style.setProperty('--p', ratio.toFixed(3));
   fill.classList.toggle('high', ratio >= 0.8);
+  const pct = document.getElementById('quotaPct');
+  if (pct) pct.textContent = `${Math.round(ratio * 100)}%`;
   hint.textContent = ratio >= 0.8 && !token
     ? 'Perto do limite. Cadastre um token gratuito em fipe.api.br para dobrar a cota.'
     : 'Contagem desta extensão; respostas já guardadas não gastam cota.';
@@ -42,15 +45,65 @@ export async function renderFavorites(): Promise<void> {
     if (title instanceof HTMLAnchorElement && href) { title.href = href; title.target = '_blank'; title.rel = 'noopener noreferrer'; }
     const meta = document.createElement('span');
     meta.className = 'meta';
-    const checked = `${fav.checks.length}/6 itens do checklist`;
+    const checked = `${fav.checks.length}/${CHECKLIST.length} itens do checklist`;
     meta.textContent = fav.target ? `Alvo ${brl.format(fav.target)} · ${checked}` : checked;
+    const bar = document.createElement('span');
+    bar.className = 'bar';
+    bar.setAttribute('aria-hidden', 'true');
+    const fill = document.createElement('i');
+    fill.style.width = `${Math.round((fav.checks.length / CHECKLIST.length) * 100)}%`;
+    fill.classList.toggle('full', fav.checks.length === CHECKLIST.length);
+    bar.append(fill);
     const remove = document.createElement('button');
     remove.type = 'button';
     remove.textContent = 'Remover';
     remove.setAttribute('aria-label', `Remover dos favoritos: ${title.textContent}`);
     remove.addEventListener('click', () => { void store.unfavorite(fav.key).then(renderFavorites); });
-    item.append(title, meta, remove);
+    item.append(title, meta, bar, remove);
     return item;
   }));
   empty.hidden = favorites.length > 0;
+  const count = document.getElementById('favCount');
+  if (count) count.textContent = favorites.length ? `· ${favorites.length}` : '';
+}
+
+const isFirefox = () => /firefox/i.test(navigator.userAgent);
+
+function showUpdate(s: UpdateStatus | null) {
+  const banner = document.getElementById('updateBanner');
+  const title = document.getElementById('updateTitle');
+  const how = document.getElementById('updateHow');
+  const link = document.getElementById('updateLink') as HTMLAnchorElement | null;
+  const statusEl = document.getElementById('updateStatus');
+  if (statusEl) statusEl.textContent = !s ? 'sem informação de versões' : s.available ? `${s.latest} disponível` : 'você está na versão mais recente';
+  if (!banner || !title || !how || !link) return;
+  banner.hidden = !s?.available;
+  if (!s?.available) return;
+  title.textContent = `Versão ${s.latest} disponível`;
+  how.textContent = isFirefox()
+    ? 'O Firefox instala sozinho em breve, ou baixe o .xpi agora.'
+    : 'Baixe o .zip, extraia na pasta da extensão e recarregue.';
+  link.href = s.url;
+}
+
+/** Version line, update banner and "Verificar atualizações" in the popup. */
+export async function renderUpdate(): Promise<void> {
+  const version = document.getElementById('versionText');
+  if (version) version.textContent = currentVersion();
+  const button = document.getElementById('checkUpdate') as HTMLButtonElement | null;
+  if (button && !button.dataset.bound) {
+    button.dataset.bound = 'true';
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      const statusEl = document.getElementById('updateStatus');
+      if (statusEl) statusEl.textContent = 'verificando…';
+      const s = await checkForUpdate({ force: true });
+      showUpdate(s);
+      showBadge(s);
+      button.disabled = false;
+    });
+  }
+  const s = await checkForUpdate();
+  showUpdate(s);
+  showBadge(s);
 }

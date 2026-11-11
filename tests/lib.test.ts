@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculate, expandYear, parseAmount, parseBidInput, parseCurrency, parseDescription } from '../src/lib';
+import { bidRange, calculate, dealScore, expandYear, parseAmount, parseBidInput, parseCurrency, parseDescription } from '../src/lib';
 import { Fees } from '../src/lib';
 
 const fees: Fees = { towing: 1500, extraCosts: 0, adminFee: 1900, logisticsFee: 1416, atpvFee: 40, commissionRate: 0.05, ipvaFee: 0 };
@@ -146,5 +146,39 @@ describe('parseBidInput (the auction bid input)', () => {
   it('turns invalid or negative text into 0', () => {
     expect(parseBidInput('abc')).toBe(0);
     expect(parseBidInput('-5')).toBe(0);
+  });
+});
+
+describe('dealScore', () => {
+  const base = calculate(20000, 5000, { towing: 1500, extraCosts: 0, adminFee: 1900, logisticsFee: 1416, atpvFee: 40, commissionRate: 0.05, ipvaFee: 0 });
+
+  it('rewards return over cost and is capped at 100', () => {
+    expect(base.profitPercentage).toBeGreaterThan(90);
+    expect(dealScore(base)).toEqual({ score: 100, verdict: 'Excelente', tone: 'good' });
+  });
+
+  it('takes 12 points per high risk and 4 per warning', () => {
+    const r = { ...base, profitPercentage: 20 }; // 30 + 28 = 58
+    expect(dealScore(r).score).toBe(58);
+    expect(dealScore(r, [{ level: 'high' }])).toEqual({ score: 46, verdict: 'Apertado', tone: 'ok' });
+    expect(dealScore(r, [{ level: 'high' }, { level: 'warn' }]).score).toBe(42);
+  });
+
+  it('a loss scores low and never below 0', () => {
+    expect(dealScore({ ...base, profitPercentage: -10 })).toEqual({ score: 16, verdict: 'Evite', tone: 'bad' });
+    expect(dealScore({ ...base, profitPercentage: -80 }).score).toBe(0);
+  });
+});
+
+describe('bidRange', () => {
+  it('spans 1.5× the larger bid on a round step', () => {
+    expect(bidRange(5000, 14422.85)).toEqual({ min: 0, max: 21700, step: 100 });
+    expect(bidRange(5000, 8000)).toEqual({ min: 0, max: 12000, step: 50 });
+    expect(bidRange(38000, 33470.47)).toEqual({ min: 0, max: 57000, step: 100 });
+    expect(bidRange(98000, 120000)).toEqual({ min: 0, max: 180000, step: 500 });
+  });
+
+  it('keeps a usable range when there is no bid nor maximum', () => {
+    expect(bidRange(0, 0)).toEqual({ min: 0, max: 1500, step: 50 });
   });
 });

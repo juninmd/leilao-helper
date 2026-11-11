@@ -6,3 +6,4 @@ web-ext-artifacts
 *.log
 test-results
 playwright-report
+release
