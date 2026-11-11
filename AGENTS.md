@@ -19,9 +19,10 @@ src/model_match.ts       # ranking de modelos: leituras de token, sinônimos, fa
 src/depara.ts            # tabelas de de-para (marcas, siglas, reescritas por marca, não-FIPE); toda entrada vem de lote real
 src/fipe_http.ts        # fetch com timeout, cache persistente (storage.local), cópia reserva em erro, pausa após 429
 src/persistent_cache.ts # cache por tabela de referência FIPE, cooldown e contador de cota
-src/lib.ts              # funções puras: parseCurrency, parseDescription, calculate (revenda, meta, lance máximo)
+src/lib.ts              # funções puras: parseCurrency, parseDescription, calculate (revenda, meta, lance máximo), dealScore, bidRange
 src/risks.ts            # chips de risco a partir do texto do lote (ignora o aviso genérico do leilão)
-src/lot_store.ts        # favorito/checklist/lance-alvo/notas por lote (storage.local); src/lot_notes.ts é a UI
+src/lot_store.ts        # favorito/checklist/lance-alvo/notas por lote (storage.local); src/lot_notes.ts é a UI (aba "Meu lote")
+src/radar.ts            # Radar do leilão na lista: resumo, melhor lote, ordenar (CSS order) e destacar oportunidades
 src/settings.ts         # defaults e acesso ao chrome.storage.sync
 src/popup.{html,ts}     # configurações de custos e token FIPE
 src/styles.css          # CSS injetado
@@ -49,7 +50,7 @@ manifest.json           # MV3, Chrome + Firefox (gecko id)
 - Lógica pura vai em `lib.ts` com teste unitário; comportamento de DOM vai coberto no e2e.
 - `commissionRate` é guardado em **%** no storage (popup) e convertido para fração em `settings.ts`; a comissão lida da página já é fração.
 - A resposta real da BrasilAPI usa `{ modelo, valor }` nos modelos e `{ nome, valor }` nas marcas; a FIPE v2 usa `{ code, name }` e `price`. Não presumir outros nomes.
-- Mutações do próprio DOM da extensão (`.fipe-helper-container`, `.fipe-modal-overlay`) são ignoradas pelo observer — mantenha assim para evitar loop de renderização.
+- Mutações do próprio DOM da extensão (`.fipe-helper-container`, `.fipe-modal-overlay`, `.fipe-radar`) são ignoradas pelo observer — mantenha assim para evitar loop de renderização.
 - Rodar e2e: Chromium em `/opt/pw-browsers` (ou `CHROME_PATH`); não rodar `playwright install`.
 - O site do leilão retorna 403 para automação: use as fixtures de `e2e/fixtures.ts`, nunca scraping real.
 - Texto de UI em português (pt-BR).

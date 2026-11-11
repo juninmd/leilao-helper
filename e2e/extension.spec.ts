@@ -28,7 +28,7 @@ const open = async (url = LIST_URL) => {
   return page;
 };
 const shot = async (page: Page, name: string) => {
-  await page.waitForTimeout(350); // let entry animations settle
+  await page.waitForTimeout(1100); // let entry animations (count-up, ring, chips) settle
   await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
 };
 
@@ -43,15 +43,16 @@ test('list page: profit (green) and loss (red) with page fees', async () => {
   await expect(uno).toContainText('Comissão Leiloeiro (5%)');
   await expect(uno).toContainText('Uno Mille Economy 1.0 Fire Flex 8V 4p');
   await expect(uno.locator('.fipe-profit')).not.toHaveClass(/negative/);
-  await expect.poll(() => uno.evaluate(e => getComputedStyle(e).borderLeftColor)).toBe('rgb(5, 150, 105)'); // waits for the CSS transition
+  await expect.poll(() => uno.evaluate(e => getComputedStyle(e).borderLeftColor)).toBe('rgb(67, 229, 160)'); // waits for the CSS transition
 
   const gol = lotCard(page, 1);
   await expect(gol).toContainText('Lucro Estimado');
   await expect(gol.locator('.fipe-profit')).toHaveClass(/negative/);
-  await expect.poll(() => gol.evaluate(e => getComputedStyle(e).borderLeftColor)).toBe('rgb(220, 38, 38)');
+  await expect.poll(() => gol.evaluate(e => getComputedStyle(e).borderLeftColor)).toBe('rgb(255, 138, 101)');
   await shot(page, '01-lista-lotes');
-  await uno.locator('.fipe-details summary').click();
-  await expect(uno.locator('.fipe-details')).toHaveJSProperty('open', true);
+  await uno.locator('.fipe-tab[data-tab="costs"]').click();
+  await expect(uno.locator('.fipe-tab[data-tab="costs"]')).toHaveAttribute('aria-expanded', 'true');
+  await expect(uno.locator('.fipe-details')).toBeVisible();
   await shot(page, '11-detalhamento-custos');
 });
 
@@ -82,7 +83,7 @@ test('no infinite re-render loop and API calls are deduplicated', async () => {
   const page = await open();
   await expect(lotCard(page, 0)).toContainText('Lucro Estimado');
   await expect(lotCard(page, 1)).toContainText('Lucro Estimado');
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(900); // entry animations (profit count-up) end within ~0,5 s
   const mutations = await page.evaluate(() => new Promise<number>(res => {
     let n = 0;
     new MutationObserver(m => { n += m.length; }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true });
@@ -136,14 +137,14 @@ test('API offline shows a connection error', async () => {
 test('bid update re-renders the lot', async () => {
   const page = await open();
   await expect(lotCard(page, 0)).toContainText('R$ 10.106,00');
-  await lotCard(page, 0).locator('.fipe-details summary').click(); // stays open across re-renders
+  await lotCard(page, 0).locator('.fipe-tab[data-tab="costs"]').click(); // stays open across re-renders
   await page.evaluate(() => {
     document.querySelector('#vlr-0')!.textContent = 'R$ 6.000,00';
     (document.querySelector('[data-testid="lot-0"] #hdMaiorLance') as HTMLInputElement).value = '6000';
   });
   // 6000 + 300 + 1900 + 1416 + 40 + 1500 = 11156
   await expect(lotCard(page, 0)).toContainText('R$ 11.156,00');
-  await expect(lotCard(page, 0).locator('.fipe-details')).toHaveJSProperty('open', true);
+  await expect(lotCard(page, 0).locator('.fipe-details')).toBeVisible();
 });
 
 // 7 ─ IPVA
@@ -263,7 +264,7 @@ test('picker: category filter, keyboard navigation and capped results', async ()
   await page.keyboard.press('Escape');
 
   // Category filter swaps the whole catalog.
-  await modal.locator('#fipe-category').selectOption('motos');
+  await modal.getByRole('radio', { name: 'Motos' }).check();
   await brand.focus();
   await expect(modal.locator('.fipe-combo-pop').getByRole('option')).toHaveText(['HONDA']);
   await shot(page, '12-seletor-busca');
@@ -352,7 +353,7 @@ test('lot with no bids uses the initial bid and does not feed on its own panel',
   const page = await open('https://www.freitasleiloeiro.com.br/Leiloes/LoteDetalhes?id=2');
   const panel = page.locator('#fipe-detail-helper');
   await expect(panel).toContainText('Lucro Estimado');
-  await panel.locator('.fipe-details summary').click();
+  await panel.locator('.fipe-tab[data-tab="costs"]').click();
   const bidRow = panel.locator('.fipe-row', { hasText: 'Lance (Maior/Inicial)' }).locator('.fipe-value');
   await expect(bidRow).toHaveText('R$ 5.000,00'); // UNO.bid doubles as the initial bid in this fixture
   // Poke the page like the live site does when it refreshes the bid area, then re-check: it must not drift.
@@ -371,7 +372,7 @@ test('reads the fees as worded on the live site ("Despesas operacionais")', asyn
   const page = await open();
   const card = lotCard(page, 0);
   await expect(card).toContainText('Lucro Estimado');
-  await card.locator('.fipe-details summary').click();
+  await card.locator('.fipe-tab[data-tab="costs"]').click();
   // 5000 + 250 + 2350 + 350 + 40 + 1500 = 9490
   await expect(card.locator('.fipe-details')).toContainText('R$ 2.350,00');
   await expect(card).toContainText('R$ 9.490,00');
@@ -383,6 +384,7 @@ test('detail page shows the panel once, above the description', async () => {
   const panel = page.locator('#fipe-detail-helper');
   await expect(panel).toContainText('Lucro Estimado');
   await expect(page.locator('#fipe-detail-helper')).toHaveCount(1);
+  await expect(page.locator('.fipe-radar')).toHaveCount(0); // one lot: nothing to compare
   await shot(page, '07-detalhe-lote');
 });
 
@@ -456,7 +458,7 @@ test('resale discount and target margin change profit and the maximum bid', asyn
   // floor(((16.000 / 1,1 − 4.856) / 1,05) × 100) / 100 = 9.228,05
   await expect(panel.locator('.fipe-maxbid')).toContainText('Lance máximo (lucro de 10%)');
   await expect(panel.locator('.fipe-maxbid')).toContainText('R$ 9.228,05');
-  await panel.locator('.fipe-details summary').click();
+  await panel.locator('.fipe-tab[data-tab="costs"]').click();
   await expect(panel).toContainText('Revenda estimada (FIPE −20%)');
   await shot(page, '14-revenda-e-meta');
 });
@@ -488,15 +490,18 @@ test('my lot: favorite, checklist, target bid and notes persist, and the popup l
   await expect(panel).toContainText('Lucro Estimado');
   const fav = panel.locator('.fipe-fav');
   await expect(fav).toHaveAttribute('aria-pressed', 'false');
+  const lotTab = panel.locator('.fipe-tab[data-tab="lot"]');
+  await lotTab.click();
+  await expect(lotTab).toHaveAttribute('aria-expanded', 'true');
   await fav.click();
-  await panel.locator('.fipe-notes summary').click();
   await panel.locator('.fipe-checklist input').nth(0).check();
   await panel.locator('.fipe-checklist input').nth(2).check();
   await panel.locator('.fipe-target').fill('12000.50'); // a dot before two digits is a decimal point, not R$ 1.200.050
   await expect(panel.locator('.fipe-target-note')).toContainText('2.422,35 abaixo do lance máximo');
   await panel.locator('.fipe-target').fill('16.000,00');
   await panel.locator('.fipe-note-field').fill('Pneus carecas; <b>conferir</b> chave reserva');
-  await expect(panel.locator('.fipe-notes summary')).toContainText('(2/6)');
+  await expect(lotTab).toContainText('(2/6)');
+  await expect(panel.locator('.fipe-check-count')).toHaveText('2/6');
   // max bid 14.422,85 → the target is 1.577,15 above it
   await expect(panel.locator('.fipe-target-note')).toContainText('1.577,15 acima do lance máximo');
   await expect(panel.locator('.fipe-risk')).toHaveCount(0); // the checklist mentions "sucata" but is not lot text
@@ -507,13 +512,14 @@ test('my lot: favorite, checklist, target bid and notes persist, and the popup l
   const again = await open(DETAIL_URL);
   const back = again.locator('#fipe-detail-helper');
   await expect(back.locator('.fipe-fav')).toHaveAttribute('aria-pressed', 'true');
-  await expect(back.locator('.fipe-notes summary')).toContainText('(2/6)');
+  await expect(back.locator('.fipe-tab[data-tab="lot"]')).toContainText('(2/6)');
   await expect(back.locator('.fipe-target')).toHaveValue('16.000,00');
   await expect(back.locator('.fipe-note-field')).toHaveValue('Pneus carecas; <b>conferir</b> chave reserva');
   await expect(back.locator('.fipe-notes b')).toHaveCount(0); // notes are text, never markup
 
   const popup = await context.newPage();
   await popup.goto(popupUrl());
+  await popup.click('#tab-favs');
   const item = popup.locator('#favList li');
   await expect(item).toHaveCount(1);
   await expect(item).toContainText('FIAT/UNO MILLE ECONOMY');
@@ -544,6 +550,7 @@ test('popup counts API requests, and reloading cached lots does not spend more',
   await page.reload();
   await expect(lotCard(page, 1)).toContainText('Lucro Estimado');
   expect((await count()).n).toBe(first.n);
+  await popup.click('#tab-api');
   await popup.fill('#fipeToken', 'abc');
   await popup.click('button[type="submit"]');
   await expect(popup.locator('#quotaText')).toContainText('de 1000');
@@ -553,6 +560,62 @@ test('picker explains when to enter IPVA', async () => {
   const page = await open();
   await lotCard(page, 0).locator('.fipe-manual-btn').click();
   await expect(page.locator('.fipe-modal .fipe-hint')).toContainText('edital');
+});
+
+// 10c ─ deal score and bid simulator
+test('deal score and verdict; the bid simulator recomputes profit and slack, and resets', async () => {
+  const page = await open();
+  const uno = lotCard(page, 0);
+  await expect(uno).toContainText('R$ 9.894,00');
+  // 97,9% over cost → 30 + 137 → capped at 100
+  await expect(uno.locator('.fipe-score')).toHaveAttribute('aria-label', 'Nota do negócio 100 de 100: Excelente');
+  await expect(lotCard(page, 1).locator('.fipe-score')).toHaveAttribute('aria-label', /Evite$/);
+
+  const range = uno.locator('.fipe-sim-range');
+  await expect(range).toHaveValue('5000');
+  await range.evaluate((el: HTMLInputElement) => { el.value = '10000'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+  // 10000 + 500 + 4856 = 15356 → 20000 − 15356 = 4644
+  await expect(uno.locator('.fipe-sim-bid')).toHaveText('R$ 10.000,00');
+  await expect(uno.locator('.fipe-profit')).toContainText('R$ 4.644,00');
+  await expect(uno.locator('.fipe-maxbid')).toContainText('Folga de R$ 4.422,85 sobre o lance simulado');
+  await uno.locator('.fipe-tab[data-tab="costs"]').click();
+  await expect(uno.locator('.fipe-row', { hasText: 'Lance (Maior/Inicial)' })).toContainText('R$ 10.000,00');
+  await shot(page, '19-simulador-de-lance');
+
+  await uno.locator('.fipe-sim-reset').click();
+  await expect(uno.locator('.fipe-profit')).toContainText('R$ 9.894,00');
+  await expect(uno.locator('.fipe-sim-reset')).toBeHidden();
+  await expect(range).toHaveValue('5000');
+});
+
+// 10d ─ radar on the list page
+test('radar summarizes the page, flags the best lot, sorts by profit and dims the rest', async () => {
+  lots = [GOL, NAVE, UNO];
+  const page = await open();
+  await expect(lotCard(page, 2)).toContainText('Lucro Estimado');
+  const radar = page.locator('.fipe-radar');
+  await expect(radar).toBeVisible();
+  await expect(radar).toContainText('2 de 3 lotes com FIPE');
+  await expect(radar).toContainText('1 oportunidade');
+  await expect(radar).toContainText('melhor: FIAT UNO MILLE ECONOMY');
+  await expect(lotCard(page, 2).locator('.fipe-best')).toBeVisible();
+  await expect(lotCard(page, 0).locator('.fipe-best')).toBeHidden();
+
+  const col = (i: number) => page.locator(`[data-testid="lot-${i}"]`).locator('xpath=..');
+  await radar.getByRole('button', { name: 'Maior lucro' }).click();
+  await expect(radar.getByRole('button', { name: 'Maior lucro' })).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => col(2).evaluate(e => getComputedStyle(e).order)).toBe('1'); // Uno first
+  await expect.poll(() => col(1).evaluate(e => getComputedStyle(e).order)).toBe('3'); // no FIPE last
+
+  await radar.getByRole('button', { name: 'Só oportunidades' }).click();
+  await expect(col(0)).toHaveAttribute('data-fipe-dim', '');
+  await expect(col(2)).not.toHaveAttribute('data-fipe-dim');
+  await shot(page, '18-radar-do-leilao');
+
+  await radar.getByRole('button', { name: 'Ordem do site' }).click();
+  await expect.poll(() => col(2).evaluate(e => getComputedStyle(e).order)).toBe('0');
+  await radar.getByRole('button', { name: 'Minimizar radar' }).click();
+  await expect(radar).toContainText('Radar · 1 oportunidade');
 });
 
 // 11 ─ non-matching pages are left alone

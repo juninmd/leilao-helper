@@ -2,9 +2,13 @@ import { parseAmount } from './lib';
 import { CHECKLIST, LotRecord, LotStore, lotKey, MAX_NOTE, sanitize } from './lot_store';
 
 export interface LotNotes {
+  /** The tab panel holding favorite, checklist, target bid and notes. */
+  panel: HTMLElement;
   /** Tells the panel the current computed maximum bid, to compare with the buyer's target. */
   setMaxBid(maxBid: number | null): void;
 }
+
+const STAR = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z"/></svg>';
 
 const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const SAVE_DELAY_MS = 400;
@@ -17,7 +21,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
 }
 
 /** Favorite, target bid, due-diligence checklist and notes for the lot on this page. Text only, never HTML. */
-export function mountLotNotes(container: HTMLElement, store: LotStore, href: string, title: string): LotNotes {
+export function mountLotNotes(container: HTMLElement, store: LotStore, href: string, title: string, onProgress?: (done: number, total: number) => void): LotNotes {
   const key = lotKey(href);
   let record: LotRecord | null = null;
   let maxBid: number | null = null;
@@ -27,14 +31,19 @@ export function mountLotNotes(container: HTMLElement, store: LotStore, href: str
 
   const fav = el('button', 'fipe-fav');
   fav.type = 'button';
-  const glyph = el('span');
-  glyph.setAttribute('aria-hidden', 'true');
-  fav.append(glyph, document.createTextNode('Favorito'));
-  const panel = el('details', 'fipe-notes-details');
-  const summary = el('summary');
+  fav.innerHTML = STAR;
+  fav.append(document.createTextNode('Favoritar lote'));
+  const head = el('div', 'fipe-check-head');
+  const headLabel = el('span', undefined, 'Checklist antes de dar lance');
+  const headCount = el('span', 'fipe-check-count');
+  head.append(headLabel, headCount);
+  const bar = el('div', 'fipe-check-bar');
+  bar.setAttribute('aria-hidden', 'true');
+  const barFill = el('i');
+  bar.append(barFill);
   const list = el('ul', 'fipe-checklist');
   const checkboxes = CHECKLIST.map(item => {
-    const box = el('input');
+    const box = el('input', 'fipe-check');
     box.type = 'checkbox';
     box.value = item.id;
     const label = el('label');
@@ -64,17 +73,20 @@ export function mountLotNotes(container: HTMLElement, store: LotStore, href: str
   note.rows = 3;
   note.placeholder = 'Estado do veículo, pendências, prazos…';
 
-  panel.append(summary, list, targetLabel, target, targetNote, noteLabel, note);
-  const wrap = el('section', 'fipe-notes');
+  const wrap = el('section', 'fipe-notes fipe-panel');
+  wrap.id = `${targetId}-panel`;
+  wrap.hidden = true;
   wrap.setAttribute('aria-label', 'Meu lote');
-  wrap.append(fav, panel);
+  wrap.append(fav, head, bar, list, targetLabel, target, targetNote, noteLabel, note);
   container.append(wrap);
 
   const render = () => {
     if (!record) return;
-    fav.setAttribute('aria-pressed', String(record.fav));
-    glyph.textContent = record.fav ? '★ ' : '☆ '; // the label stays fixed; aria-pressed carries the state
-    summary.textContent = `Checklist e anotações (${record.checks.length}/${CHECKLIST.length})`;
+    fav.setAttribute('aria-pressed', String(record.fav)); // the label stays fixed; aria-pressed carries the state
+    const done = record.checks.length;
+    headCount.textContent = `${done}/${CHECKLIST.length}`;
+    barFill.style.width = `${Math.round((done / CHECKLIST.length) * 100)}%`;
+    onProgress?.(done, CHECKLIST.length);
     checkboxes.forEach(box => { box.checked = record!.checks.includes(box.value); });
     const goal = record.target;
     if (!goal || maxBid === null) { targetNote.textContent = ''; targetNote.className = 'fipe-target-note'; return; }
@@ -149,5 +161,5 @@ export function mountLotNotes(container: HTMLElement, store: LotStore, href: str
     render();
   });
 
-  return { setMaxBid(next) { maxBid = next; render(); } };
+  return { panel: wrap, setMaxBid(next) { maxBid = next; render(); } };
 }

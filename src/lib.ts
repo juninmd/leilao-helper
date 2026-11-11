@@ -121,3 +121,26 @@ export function calculate(fipe: number, bid: number, settings: Fees, pageFees: P
     profitPercentage,
   };
 }
+
+export type DealTone = 'good' | 'ok' | 'bad';
+export interface DealScore { score: number; verdict: string; tone: DealTone }
+
+/**
+ * 0–100 summary of a lot: return over total cost, minus a penalty per red flag (12 for high, 4 for warn).
+ * A reading aid for comparing lots on one page, never a decision: the edital still rules.
+ */
+export function dealScore(r: CalculationResult, risks: readonly { level: 'high' | 'warn' }[] = []): DealScore {
+  const high = risks.filter(x => x.level === 'high').length;
+  const warn = risks.length - high;
+  const raw = 30 + r.profitPercentage * 1.4 - high * 12 - warn * 4;
+  const score = Math.max(0, Math.min(100, Math.round(raw)));
+  const verdict = score >= 75 ? 'Excelente' : score >= 55 ? 'Bom negócio' : score >= 35 ? 'Apertado' : 'Evite';
+  return { score, verdict, tone: score >= 55 ? 'good' : score >= 35 ? 'ok' : 'bad' };
+}
+
+/** Slider bounds for the bid simulator: from zero to 1.5× the larger of the current and maximum bids, on a round step. */
+export function bidRange(current: number, maxBid: number): { min: number; max: number; step: number } {
+  const top = Math.max(current, maxBid, 1000) * 1.5;
+  const step = top < 20000 ? 50 : top < 100000 ? 100 : 500;
+  return { min: 0, max: Math.ceil(top / step) * step, step };
+}
