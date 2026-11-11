@@ -1,5 +1,5 @@
 import { DEFAULTS, TOKEN_KEY, setStored } from './settings';
-import { renderFavorites, renderQuota } from './popup_extras';
+import { renderFavorites, renderQuota, renderUpdate } from './popup_extras';
 import { storageGet } from './storage';
 import { calculate } from './lib';
 
@@ -125,3 +125,4 @@ resetBtn.addEventListener('click', resetDefaults);
 void loadSettings();
 void renderQuota();
 void renderFavorites();
+void renderUpdate();

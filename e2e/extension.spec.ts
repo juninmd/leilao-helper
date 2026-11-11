@@ -618,6 +618,27 @@ test('radar summarizes the page, flags the best lot, sorts by profit and dims th
   await expect(radar).toContainText('Radar · 1 oportunidade');
 });
 
+// 10e ─ update check against GitHub releases
+test('popup: no banner on the latest version; a newer release shows the banner and the version line', async () => {
+  const popup = await context.newPage();
+  await popup.goto(popupUrl());
+  await popup.click('#tab-api');
+  await expect(popup.locator('#updateStatus')).toHaveText('você está na versão mais recente');
+  await expect(popup.locator('#updateBanner')).toBeHidden();
+
+  api.latestRelease = 'v9.9.0';
+  await popup.click('#checkUpdate');
+  const banner = popup.locator('#updateBanner');
+  await expect(banner).toBeVisible();
+  await expect(banner).toContainText('Versão 9.9.0 disponível');
+  await expect(popup.locator('#updateLink')).toHaveAttribute('href', 'https://github.com/juninmd/leilao-helper/releases/tag/v9.9.0');
+  await expect(popup.locator('#updateStatus')).toHaveText('9.9.0 disponível');
+  await shot(popup, '20-popup-atualizacao');
+
+  await popup.reload(); // cached for 12 h: the banner stays without a new request
+  await expect(banner).toBeVisible();
+});
+
 // 11 ─ non-matching pages are left alone
 test('page without lots is untouched', async () => {
   lots = [];

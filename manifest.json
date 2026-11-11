@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "description": "Exibe o valor FIPE e lucro calculado no site Freitas Leiloeiro.",
   "permissions": [
-    "storage"
+    "storage",
+    "alarms"
   ],
   "host_permissions": [
     "https://www.freitasleiloeiro.com.br/*",
@@ -12,6 +13,12 @@
     "https://fipe.parallelum.com.br/*",
     "https://brasilapi.com.br/*"
   ],
+  "background": {
+    "service_worker": "dist/background.global.js",
+    "scripts": [
+      "dist/background.global.js"
+    ]
+  },
   "content_scripts": [
     {
       "matches": [

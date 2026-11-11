@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 import { copyFileSync, mkdirSync } from 'fs';
 
 export default defineConfig({
-  entry: ['src/content_script.ts', 'src/popup.ts'],
+  entry: ['src/content_script.ts', 'src/popup.ts', 'src/background.ts'],
   outDir: 'dist',
   format: ['iife'],
   noExternal: [/.*/],

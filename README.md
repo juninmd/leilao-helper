@@ -46,6 +46,13 @@ Extensão para Chrome/Brave/Edge e Firefox (Manifest V3) que consulta a **Tabela
 
 ## 🚀 Instalação
 
+**Pela release (recomendado):** baixe da [última release](https://github.com/juninmd/leilao-helper/releases/latest):
+
+- **Firefox:** `leilao-helper-X.Y.Z-firefox.xpi` (assinado). Arraste para o Firefox; as versões seguintes **instalam sozinhas** (o `.xpi` aponta para o `updates.json` da última release).
+- **Chrome / Brave / Edge:** `leilao-helper-X.Y.Z-chrome.zip`. Extraia numa pasta e use *Carregar sem compactação*. O Chrome não atualiza sozinho extensões fora da Chrome Web Store, então o ícone ganha um **↑** e o popup mostra *Versão X disponível* com o link; para atualizar, extraia o `.zip` novo por cima da mesma pasta e clique em *Recarregar*. Se a extensão for publicada na Web Store (segredos `CWS_*`), a loja passa a atualizar sozinha.
+
+### A partir do código
+
 Requisitos: Node.js 22 (versão usada no CI) e pnpm 10 (`packageManager` do `package.json`).
 
 ```bash
@@ -56,6 +63,25 @@ pnpm build        # gera dist/
 **Chrome / Brave / Edge:** `chrome://extensions` → ative o *Modo do desenvolvedor* → *Carregar sem compactação* → selecione a pasta do projeto.
 
 **Firefox (140+):** `about:debugging#/runtime/this-firefox` → *Carregar extensão temporária…* → selecione `manifest.json`. Ou `pnpm dev` (web-ext).
+
+## 🏷️ Versões e atualização automática
+
+A versão sai dos **commits semânticos** ([Conventional Commits](https://www.conventionalcommits.org/pt-br/)). A cada push no branch principal, `release.yml` lê os commits desde a última tag `vX.Y.Z`:
+
+| Commit | Versão |
+|---|---|
+| `feat: …` | minor (1.1.0 → 1.2.0) |
+| `fix: …`, `perf: …`, `revert: …` | patch (1.1.0 → 1.1.1) |
+| `feat!: …` ou rodapé `BREAKING CHANGE:` | major (1.1.0 → 2.0.0) |
+| `chore`, `docs`, `ci`, `test`, `refactor`, `style`, `build`, merges | sem release |
+
+Ele roda os testes, gera os pacotes com a versão no `manifest.json`, cria a tag e a release com notas agrupadas (Novidades, Correções) e anexa:
+
+- `leilao-helper-X.Y.Z-chrome.zip`;
+- `leilao-helper-X.Y.Z-firefox.xpi` + `updates.json`, com o `.xpi` assinado na AMO no canal *unlisted* quando os segredos `AMO_JWT_ISSUER` e `AMO_JWT_SECRET` existem (sem eles sai `…-firefox-unsigned.zip`, que o Firefox comum não instala);
+- envio para a Chrome Web Store, se existirem `CWS_EXTENSION_ID`, `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET` e `CWS_REFRESH_TOKEN`.
+
+A tag é a fonte da versão: o `manifest.json` do repositório continua com a versão base e não recebe commit de bump. Dentro da extensão, um *service worker* consulta `api.github.com/repos/juninmd/leilao-helper/releases/latest` a cada 12 h (cache em `storage.local`, nunca quebra sem rede), marca **↑** no ícone e o popup mostra o aviso e o botão *Verificar atualizações* (aba API). Teste local do empacotamento: `pnpm build && pnpm release next && pnpm release package 1.2.3`.
 
 ## ⚙️ Configuração (popup)
 
@@ -98,7 +124,7 @@ Estrutura: `src/content_script.ts` (UI nas páginas), `src/vehicle_picker.ts` + 
 | `CI` (`ci.yml`) | Node 22, `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm lint:ext` e o e2e do Playwright com a extensão no Chromium |
 | `Validate` (`validate.yml`) | Reutiliza `juninmd/base-actions` (`reusable-validate.yml`): validação do PR (lint apenas como aviso) e auditoria de dependências, nível `high` bloqueante |
 | `Security Scan` (`security.yml`) | Gitleaks via `juninmd/base-actions` (`reusable-security-scan.yml`), em push para `main`/`master` |
-| `Release Drafter` (`release-drafter.yml`) | Mantém o rascunho de release atualizado; não bloqueia |
+| `Release` (`release.yml`) | Push no branch principal: versão pelos commits semânticos, testes, pacotes Chrome/Firefox, tag `vX.Y.Z` e release. Sem `feat`/`fix`/breaking desde a última tag, não publica nada |
 
 ## ✅ Homologação
 

@@ -1,7 +1,7 @@
 import { BrowserContext, chromium, Page, Route } from '@playwright/test';
 import { createHash } from 'crypto';
 import { resolve } from 'path';
-import { mkdtempSync } from 'fs';
+import { mkdtempSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 
 export const ROOT = resolve(__dirname, '..');
@@ -78,7 +78,7 @@ export const detailPageNoBids = (l: Lot) => `<!doctype html><html lang="pt-BR"><
 </div></main></body></html>`;
 
 // ---- FIPE API mock (shapes copied from the real BrasilAPI / FIPE v2 responses) ----
-export interface ApiMode { price429?: boolean; offline?: boolean; calls: string[] }
+export interface ApiMode { price429?: boolean; offline?: boolean; calls: string[]; /** Latest GitHub release tag; defaults to the manifest's own version (no update). */ latestRelease?: string }
 
 const brands = [{ nome: 'Fiat', valor: '21' }, { nome: 'VW - VolksWagen', valor: '59' }, { nome: 'GM - Chevrolet', valor: '23' }];
 const models: Record<string, { modelo: string; valor: string }[]> = {
@@ -94,6 +94,12 @@ const modelName = (id: string) => [...models['21'], ...models['59'], ...motoMode
 export async function mockApis(context: BrowserContext, mode: ApiMode) {
   const json = (route: Route, body: unknown, status = 200) =>
     route.fulfill({ status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(body) });
+
+  // Update check (popup + background): never hit the real GitHub API from tests.
+  await context.route(/api\.github\.com\/repos\/juninmd\/leilao-helper\/releases\/latest/, route => {
+    const tag = mode.latestRelease ?? `v${JSON.parse(readFileSync(resolve(ROOT, 'manifest.json'), 'utf8')).version}`;
+    return json(route, { tag_name: tag, html_url: `https://github.com/juninmd/leilao-helper/releases/tag/${tag}`, draft: false, prerelease: false });
+  });
 
   await context.route(/brasilapi\.com\.br|fipe\.parallelum\.com\.br/, async route => {
     const url = route.request().url();

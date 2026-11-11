@@ -68,6 +68,16 @@
     .ring b { position: absolute; inset: 0; display: grid; place-content: center; font-size: 16px; }
     .quota { font-size: 13px; font-weight: 600; }
     .favs { gap: 10px; padding-bottom: 18px; }
+    .update { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; margin: 0 18px 12px; padding: 12px 14px; border-radius: 16px; background: rgba(67, 229, 160, .12); border: 1px solid rgba(67, 229, 160, .4); color: #7ff0bf; animation: fade .4s var(--ease) both; }
+    .update[hidden] { display: none; }
+    .update strong { display: block; color: var(--ink); font-size: 13px; }
+    .update span { display: block; font-size: 11px; color: var(--soft); }
+    .update a { padding: 8px 12px; border-radius: 10px; background: var(--good); color: var(--good-ink); font-weight: 700; font-size: 12px; text-decoration: none; white-space: nowrap; }
+    .version { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 10px; margin: 14px 18px 0; font-size: 11px; color: var(--muted); }
+    body:not([data-tab="api"]) .version { display: none; }
+    .link-btn { min-height: 32px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: 10px; background: transparent; color: var(--soft); font: inherit; font-weight: 600; cursor: pointer; }
+    .link-btn:hover { border-color: var(--accent); color: var(--ink); }
+    .link-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .fav-title { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
     .fav-list { list-style: none; display: grid; gap: 8px; }
     .fav-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; padding: 12px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); animation: fade .35s var(--ease) both; transition: background .2s; }
@@ -100,6 +110,14 @@
       <p>Leilão FIPE Helper</p>
     </div>
   </header>
+  <div class="update" id="updateBanner" role="status" hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+    <div>
+      <strong id="updateTitle">Nova versão disponível</strong>
+      <span id="updateHow"></span>
+    </div>
+    <a id="updateLink" href="https://github.com/juninmd/leilao-helper/releases/latest" target="_blank" rel="noopener noreferrer">Ver novidades</a>
+  </div>
   <div class="tabs" role="tablist" aria-label="Seções">
     <button type="button" class="tab" role="tab" id="tab-costs" aria-controls="panel-costs" aria-selected="true">Custos</button>
     <button type="button" class="tab" role="tab" id="tab-favs" aria-controls="panel-favs" aria-selected="false" tabindex="-1">Favoritos <span id="favCount" class="num"></span></button>
@@ -177,6 +195,10 @@
           <p class="hint">Grátis em fipe.api.br. Dobra a cota diária de 500 para 1.000 consultas. Fica só no seu navegador.</p>
         </div>
       </div>
+    </div>
+    <div class="version" id="panel-version">
+      <span>Versão <b id="versionText" class="num"></b> · <span id="updateStatus" role="status"></span></span>
+      <button type="button" id="checkUpdate" class="link-btn">Verificar atualizações</button>
     </div>
     <div class="actions">
       <button type="button" id="reset" class="btn btn-secondary">Restaurar Padrões</button>

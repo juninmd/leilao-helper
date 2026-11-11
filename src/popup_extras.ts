@@ -1,6 +1,7 @@
 import { CHECKLIST, LotStore, safeLotUrl } from './lot_store';
 import { chromeBackend, readUsage } from './persistent_cache';
 import { getToken } from './settings';
+import { checkForUpdate, currentVersion, showBadge, UpdateStatus } from './update_check';
 
 // Documented FIPE v2 daily limits (fipe.api.br): 500 unauthenticated, 1.000 with the free token.
 export const DAILY_LIMIT = { anon: 500, token: 1000 };
@@ -64,4 +65,45 @@ export async function renderFavorites(): Promise<void> {
   empty.hidden = favorites.length > 0;
   const count = document.getElementById('favCount');
   if (count) count.textContent = favorites.length ? `· ${favorites.length}` : '';
+}
+
+const isFirefox = () => /firefox/i.test(navigator.userAgent);
+
+function showUpdate(s: UpdateStatus | null) {
+  const banner = document.getElementById('updateBanner');
+  const title = document.getElementById('updateTitle');
+  const how = document.getElementById('updateHow');
+  const link = document.getElementById('updateLink') as HTMLAnchorElement | null;
+  const statusEl = document.getElementById('updateStatus');
+  if (statusEl) statusEl.textContent = !s ? 'sem informação de versões' : s.available ? `${s.latest} disponível` : 'você está na versão mais recente';
+  if (!banner || !title || !how || !link) return;
+  banner.hidden = !s?.available;
+  if (!s?.available) return;
+  title.textContent = `Versão ${s.latest} disponível`;
+  how.textContent = isFirefox()
+    ? 'O Firefox instala sozinho em breve, ou baixe o .xpi agora.'
+    : 'Baixe o .zip, extraia na pasta da extensão e recarregue.';
+  link.href = s.url;
+}
+
+/** Version line, update banner and "Verificar atualizações" in the popup. */
+export async function renderUpdate(): Promise<void> {
+  const version = document.getElementById('versionText');
+  if (version) version.textContent = currentVersion();
+  const button = document.getElementById('checkUpdate') as HTMLButtonElement | null;
+  if (button && !button.dataset.bound) {
+    button.dataset.bound = 'true';
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      const statusEl = document.getElementById('updateStatus');
+      if (statusEl) statusEl.textContent = 'verificando…';
+      const s = await checkForUpdate({ force: true });
+      showUpdate(s);
+      showBadge(s);
+      button.disabled = false;
+    });
+  }
+  const s = await checkForUpdate();
+  showUpdate(s);
+  showBadge(s);
 }

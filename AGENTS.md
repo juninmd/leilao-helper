@@ -24,9 +24,11 @@ src/risks.ts            # chips de risco a partir do texto do lote (ignora o avi
 src/lot_store.ts        # favorito/checklist/lance-alvo/notas por lote (storage.local); src/lot_notes.ts é a UI (aba "Meu lote")
 src/radar.ts            # Radar do leilão na lista: resumo, melhor lote, ordenar (CSS order) e destacar oportunidades
 src/settings.ts         # defaults e acesso ao chrome.storage.sync
+src/update_check.ts     # última release no GitHub (cache 12 h), compara versão, badge ↑; src/background.ts agenda (alarms)
 src/popup.{html,ts}     # configurações de custos e token FIPE
 src/styles.css          # CSS injetado
-tests/                  # vitest (lib, fipe_service, search, live opcional)
+scripts/release*.mts    # versão por Conventional Commits, notas, pacotes Chrome/Firefox, updates.json (node --experimental-strip-types)
+tests/                  # vitest (lib, fipe_service, search, release, update_check, live opcional)
 e2e/                    # Playwright: fixtures (páginas do leilão + mock das APIs) e specs
 docs/screenshots/       # prints gerados pelo e2e (usados no README)
 manifest.json           # MV3, Chrome + Firefox (gecko id)
@@ -37,12 +39,13 @@ manifest.json           # MV3, Chrome + Firefox (gecko id)
 - `pnpm typecheck` · `pnpm test` · `pnpm test:e2e` · `pnpm lint:ext`
 - `LIVE=1 pnpm test` / `LIVE=1 pnpm test:e2e` → incluem chamadas às APIs reais
 - `pnpm dev` → Firefox via web-ext
+- `pnpm release next` / `pnpm release package <versão>` → simula a release localmente (saída em `release/`, ignorada)
 
 ## CI gates
 - `ci.yml`: Node 22, `pnpm install --frozen-lockfile` → `typecheck` → `test` → `build` → `lint:ext` → e2e Playwright. Rode o mesmo antes de abrir PR.
 - `validate.yml`: reusable de `juninmd/base-actions` (lint só avisa; auditoria de dependências `high` bloqueia).
 - `security.yml`: Gitleaks (reusable de `base-actions`). Nunca commitar token FIPE ou `.env`.
-- `release-drafter.yml`: rascunho de release, não bloqueia.
+- `release.yml`: no push do branch principal calcula a versão pelos commits (feat → minor, fix/perf/revert → patch, `!`/BREAKING → major), testa, empacota e publica a tag `vX.Y.Z` com `leilao-helper-X.Y.Z-chrome.zip`, `.xpi` assinado + `updates.json` (segredos `AMO_JWT_*`) e, opcionalmente, Chrome Web Store (`CWS_*`).
 
 ## Conventions
 - TypeScript strict; manifest compatível Chrome/Firefox; UI injetada via CSS próprio (`.fipe-*`).
@@ -54,6 +57,8 @@ manifest.json           # MV3, Chrome + Firefox (gecko id)
 - Rodar e2e: Chromium em `/opt/pw-browsers` (ou `CHROME_PATH`); não rodar `playwright install`.
 - O site do leilão retorna 403 para automação: use as fixtures de `e2e/fixtures.ts`, nunca scraping real.
 - Texto de UI em português (pt-BR).
+- Commits e títulos de PR (squash) em **Conventional Commits**: eles definem a versão publicada. `chore`/`docs`/`ci`/`test` não geram release.
+- A versão vem da tag; não faça commit de bump no `manifest.json`. O id gecko (`astral-comet@juninmd.github.io`) não muda: trocar quebra a atualização de quem já instalou.
 
 <!-- base-actions-main-policy -->
 ## GitHub Actions — padrão obrigatório (@main)

@@ -1,0 +1,100 @@
+name: Release
+
+# Cada push no branch principal calcula a próxima versão pelos Conventional Commits desde a última tag vX.Y.Z
+# (feat → minor, fix/perf/revert → patch, "!"/BREAKING CHANGE → major; chore/docs/ci/test → nada) e publica:
+#   - leilao-helper-X.Y.Z-chrome.zip          (Chrome/Edge; o popup avisa da versão nova)
+#   - leilao-helper-X.Y.Z-firefox.xpi + updates.json   (com AMO_JWT_*: assinado, atualiza sozinho no Firefox)
+#   - Chrome Web Store (opcional, com CWS_*: a loja atualiza sozinha)
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    env:
+      AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+      AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+      EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+      CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+      REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # tags e histórico para calcular a versão
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Próxima versão (Conventional Commits)
+        id: next
+        run: pnpm -s release next >> "$GITHUB_OUTPUT"
+
+      - name: Verificar
+        if: steps.next.outputs.version != ''
+        run: |
+          pnpm typecheck
+          pnpm test
+
+      - name: Build e pacotes
+        if: steps.next.outputs.version != ''
+        env:
+          VERSION: ${{ steps.next.outputs.version }}
+        run: |
+          pnpm build
+          pnpm -s release package "$VERSION"
+          npx web-ext lint --self-hosted --source-dir release/firefox
+
+      - name: Firefox assinado (AMO, canal unlisted)
+        if: steps.next.outputs.version != '' && env.AMO_JWT_ISSUER != ''
+        env:
+          VERSION: ${{ steps.next.outputs.version }}
+        run: |
+          npx web-ext sign --source-dir release/firefox --artifacts-dir release/signed --channel unlisted \
+            --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
+          mv release/signed/*.xpi "release/leilao-helper-$VERSION-firefox.xpi"
+          pnpm -s release updates "$VERSION" "release/leilao-helper-$VERSION-firefox.xpi"
+
+      - name: Firefox sem assinatura (sem segredos da AMO)
+        if: steps.next.outputs.version != '' && env.AMO_JWT_ISSUER == ''
+        env:
+          VERSION: ${{ steps.next.outputs.version }}
+        run: |
+          npx web-ext build --source-dir release/firefox --artifacts-dir release/unsigned --overwrite-dest
+          mv release/unsigned/*.zip "release/leilao-helper-$VERSION-firefox-unsigned.zip"
+
+      - name: Chrome Web Store (opcional)
+        if: steps.next.outputs.version != '' && env.REFRESH_TOKEN != ''
+        env:
+          VERSION: ${{ steps.next.outputs.version }}
+        run: npx --yes chrome-webstore-upload-cli@4.0.2 --source "release/leilao-helper-$VERSION-chrome.zip"
+
+      - name: Publicar release e tag
+        if: steps.next.outputs.version != ''
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.next.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ steps.next.outputs.tag }}
+          body_path: release/notes.md
+          make_latest: true
+          files: |
+            release/*.zip
+            release/*.xpi
+            release/updates.json
