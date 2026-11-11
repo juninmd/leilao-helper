@@ -20,5 +20,7 @@ jobs:
       - run: pnpm lint:ext
       - name: E2E (extension in Chromium)
         run: |
-          npx playwright install --with-deps chromium
+          # Só o navegador: as libs de sistema já vêm na imagem do runner, e o --with-deps travava no apt
+          # (falha de DNS em archive.ubuntu.com ao baixar fontes opcionais).
+          npx playwright install chromium
           CHROME_PATH="$(node -e "console.log(require('playwright').chromium.executablePath())")" npx playwright test
