@@ -23,13 +23,7 @@ jobs:
     timeout-minutes: 40
     permissions:
       contents: write
-    env:
-      AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
-      AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
-      EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
-      CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
-      CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
-      REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+    # Segredos só no passo que os usa (nunca no env do job: pnpm install e scripts de pacotes não os veem).
     steps:
       - uses: actions/checkout@v7
         with:
@@ -45,6 +39,17 @@ jobs:
       - name: Próxima versão (Conventional Commits)
         id: next
         run: pnpm -s release next >> "$GITHUB_OUTPUT"
+
+      - name: Segredos configurados
+        id: secrets
+        env:
+          HAS_AMO: ${{ secrets.AMO_JWT_ISSUER != '' && secrets.AMO_JWT_SECRET != '' }}
+          HAS_CWS: ${{ secrets.CWS_EXTENSION_ID != '' && secrets.CWS_CLIENT_ID != '' && secrets.CWS_CLIENT_SECRET != '' && secrets.CWS_REFRESH_TOKEN != '' }}
+        run: |
+          echo "amo=$HAS_AMO" >> "$GITHUB_OUTPUT"
+          echo "cws=$HAS_CWS" >> "$GITHUB_OUTPUT"
+          [ "$HAS_AMO" = true ] || echo "::notice::Sem AMO_JWT_ISSUER/AMO_JWT_SECRET: o Firefox sai sem assinatura e sem atualização automática."
+          [ "$HAS_CWS" = true ] || echo "::notice::Sem os 4 segredos CWS_*: a Chrome Web Store não é atualizada."
 
       - name: Verificar
         if: steps.next.outputs.version != ''
@@ -62,9 +67,11 @@ jobs:
           npx web-ext lint --self-hosted --source-dir release/firefox
 
       - name: Firefox assinado (AMO, canal unlisted)
-        if: steps.next.outputs.version != '' && env.AMO_JWT_ISSUER != ''
+        if: steps.next.outputs.version != '' && steps.secrets.outputs.amo == 'true'
         env:
           VERSION: ${{ steps.next.outputs.version }}
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
         run: |
           npx web-ext sign --source-dir release/firefox --artifacts-dir release/signed --channel unlisted \
             --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
@@ -72,7 +79,7 @@ jobs:
           pnpm -s release updates "$VERSION" "release/leilao-helper-$VERSION-firefox.xpi"
 
       - name: Firefox sem assinatura (sem segredos da AMO)
-        if: steps.next.outputs.version != '' && env.AMO_JWT_ISSUER == ''
+        if: steps.next.outputs.version != '' && steps.secrets.outputs.amo != 'true'
         env:
           VERSION: ${{ steps.next.outputs.version }}
         run: |
@@ -80,9 +87,13 @@ jobs:
           mv release/unsigned/*.zip "release/leilao-helper-$VERSION-firefox-unsigned.zip"
 
       - name: Chrome Web Store (opcional)
-        if: steps.next.outputs.version != '' && env.REFRESH_TOKEN != ''
+        if: steps.next.outputs.version != '' && steps.secrets.outputs.cws == 'true'
         env:
           VERSION: ${{ steps.next.outputs.version }}
+          EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+          CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
         run: npx --yes chrome-webstore-upload-cli@4.0.2 --source "release/leilao-helper-$VERSION-chrome.zip"
 
       - name: Publicar release e tag
