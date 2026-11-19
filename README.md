@@ -109,7 +109,7 @@ ATPV-e é fixo em R$ 40,00. O IPVA é informado em **Selecionar veículo** e só
 | Comando | O que faz |
 |---|---|
 | `pnpm build` / `pnpm watch` | Compila com tsup para `dist/` |
-| `pnpm typecheck` | `tsc --noEmit` |
+| `pnpm typecheck` | `tsc --noEmit` na extensão e `tsc -p tsconfig.scripts.json` nos scripts de release |
 | `pnpm test` | Testes unitários (vitest). `LIVE=1 pnpm test` também consulta as APIs reais |
 | `pnpm test:e2e` | Build + Playwright: carrega a extensão num Chromium real e exercita lista, detalhe, popup, erros, seletor de veículo e lance máximo. `LIVE=1` inclui um teste com as APIs reais. Gera os prints em `docs/screenshots/` |
 | `pnpm lint:ext` | `web-ext lint` do build |
@@ -128,7 +128,7 @@ Estrutura: `src/content_script.ts` (UI nas páginas), `src/vehicle_picker.ts` + 
 
 ## ✅ Homologação
 
-Última rodada (Chromium do Playwright, headless, com a extensão carregada): **111 testes unitários + 24 e2e passando** (+4 unitários e 1 e2e contra as APIs reais com `LIVE=1`). No Windows use `CHROME_PATH` apontando para o Chromium do Playwright.
+Última rodada (Chromium do Playwright, headless, com a extensão carregada): **167 testes unitários passando (4 pulados) + 24 e2e** (+4 unitários e 1 e2e contra as APIs reais com `LIVE=1`). No Windows use `CHROME_PATH` apontando para o Chromium do Playwright.
 
 **Lotes reais** (leilão 8120, lotes 3, 4 e 8, página de detalhe, APIs FIPE reais, 3 execuções completas): 87 verificações, todas OK. Cobrem lance/comissão/despesas lidos da própria página, aritmética do detalhamento e do lance máximo recalculada de forma independente, ausência de deriva em 10 s, resultado idêntico em contexto novo, seletor (pré-preenchimento, busca, teclado, categoria, Esc) em 1280 px e 375 px. Dois defeitos só apareceram aí e estão cobertos por teste: "Despesas **operacionais**" (o site usa essa palavra em alguns leilões) e a extensão ler o próprio painel como lance quando o lote não tem lances ("Aguardando lances": vale o *Lance Inicial*). Firefox: `web-ext lint` com 0 erros.
 
