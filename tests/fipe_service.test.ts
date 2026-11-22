@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FipeError, FipeService } from '../src/fipe_service';
+import { FipeError, fipeErrorMessage, FipeService } from '../src/fipe_service';
 
 const brands = [
   { nome: 'Fiat', valor: '21' },
@@ -235,5 +235,22 @@ describe('FipeService.getPrice', () => {
     const withHeader = fetchMock.mock.calls.filter(c => c[1]?.headers);
     expect(withHeader.length).toBeGreaterThan(0);
     expect(withHeader.every(c => c[0].includes('parallelum'))).toBe(true);
+  });
+});
+
+describe('invalid token', () => {
+  beforeEach(() => FipeService.clearCache());
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('reports auth (not a connection problem) when the API rejects the token', async () => {
+    mockApi({ '/years': () => new Response('{}', { status: 401 }) });
+    const error = await FipeService.getPrice('FIAT', 'UNO MILLE', 2009, 'bad-token').catch(e => e);
+    expect(error).toMatchObject({ kind: 'auth' });
+    expect(fipeErrorMessage(error)).toMatch(/Token da API FIPE inválido/);
+  });
+
+  it('keeps 401 without a token as a network error', async () => {
+    mockApi({ '/years': () => new Response('{}', { status: 401 }) });
+    await expect(FipeService.getPrice('FIAT', 'UNO MILLE', 2009)).rejects.toMatchObject({ kind: 'network' });
   });
 });

@@ -26,7 +26,7 @@ export type PricedVehicle = FipeVehicle & { approximate: boolean };
 
 export interface ResolvedVehicle { category: Category; brandCode: string; modelCode: string | null; yearCode?: string }
 
-export { FipeError };
+export { FipeError, fipeErrorMessage } from './fipe_http';
 
 // FIPE lists many variants per model; only the best-ranked few are probed for the year (one request each).
 // Guesses (only the family word matched) get fewer probes: they are the least likely to pay off.
