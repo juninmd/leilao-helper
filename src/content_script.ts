@@ -1,4 +1,4 @@
-import { FipeError, FipeService } from './fipe_service';
+import { FipeError, fipeErrorMessage, FipeService } from './fipe_service';
 import { CalculationResult } from './types';
 import { bidRange, calculate, CURRENCY_PATTERN, dealScore, extractCurrency, Fees, PageFees, parseBidInput, parseCurrency, parseDescription } from './lib';
 import { getAutoLookupEnabled, getSettings, getToken, setStored, AUTO_LOOKUP_KEY } from './settings';
@@ -586,10 +586,11 @@ async function renderEvaluation(container: HTMLElement, ctx: LotContext, overrid
     container.dataset.state = 'error';
     updateResults(container, base);
     const limited = e instanceof FipeError && e.kind === 'rate-limit';
+    const known = fipeErrorMessage(e);
     const retry = `<button type="button" class="fipe-retry">${ICON.refresh}Tentar novamente</button>`;
     getResultsContainer(container).insertAdjacentHTML('afterbegin', limited
-      ? alertHtml(ICON.clock, 'Limite da API FIPE excedido. Tente mais tarde ou informe um token no popup.', 'Lotes já consultados continuam usando a cópia guardada.', retry)
-      : alertHtml(ICON.offline, 'Não foi possível consultar a FIPE. Verifique sua conexão.', '', retry, 'bad'));
+      ? alertHtml(ICON.clock, known!, 'Lotes já consultados continuam usando a cópia guardada.', retry)
+      : alertHtml(ICON.offline, known ?? 'Não foi possível consultar a FIPE. Verifique sua conexão.', '', retry, 'bad'));
     container.querySelector<HTMLButtonElement>('.fipe-retry')?.addEventListener('click', () => {
       void FipeService.retryNow().then(() => renderEvaluation(container, ctx, override));
     });

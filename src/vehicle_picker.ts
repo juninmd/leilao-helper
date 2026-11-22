@@ -1,4 +1,4 @@
-import { Category, FipeError, FipeService, NamedCode } from './fipe_service';
+import { Category, fipeErrorMessage, FipeService, NamedCode } from './fipe_service';
 import { createCombobox } from './combobox';
 import { getToken } from './settings';
 
@@ -131,9 +131,7 @@ export function showVehiclePicker(input: PickerInput, onSubmit: (selection: Sele
       return result;
     } catch (e) {
       if (mine !== seq[key]) return undefined;
-      setStatus(e instanceof FipeError && e.kind === 'rate-limit'
-        ? 'Limite da API FIPE excedido. Tente mais tarde ou informe um token no popup.'
-        : `Não foi possível carregar ${what}.`, retry);
+      setStatus(fipeErrorMessage(e) ?? `Não foi possível carregar ${what}.`, retry);
       return undefined;
     }
   }

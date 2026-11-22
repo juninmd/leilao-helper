@@ -40,6 +40,7 @@ export async function fetchJson<T>(url: string, token?: string): Promise<T> {
       headers: token ? { 'X-Subscription-Token': token } : undefined,
     });
     if (res.status === 429) throw new FipeError('rate-limit', 'Limite de consultas da API FIPE excedido');
+    if (token && (res.status === 401 || res.status === 403)) throw new FipeError('auth', 'Token da API FIPE inválido ou expirado');
     if (!res.ok) throw new FipeError('network', `API FIPE respondeu ${res.status}`);
     return await res.json() as T;
   } catch (e) {
@@ -104,4 +105,12 @@ export async function fetchPersistent<T>(url: string, token: string | undefined,
     if (hit) return { value: hit.value as T, stale: true };
     throw e;
   }
+}
+
+/** User-facing text for a failed lookup, or null for a plain network failure (each caller words that one). */
+export function fipeErrorMessage(e: unknown): string | null {
+  if (!(e instanceof FipeError)) return null;
+  if (e.kind === 'rate-limit') return 'Limite da API FIPE excedido. Tente mais tarde ou informe um token no popup.';
+  if (e.kind === 'auth') return 'Token da API FIPE inválido ou expirado. Corrija ou apague o token no popup.';
+  return null;
 }

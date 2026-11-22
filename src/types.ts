@@ -8,7 +8,7 @@ export interface FipeVehicle {
   referenceMonth: string;
 }
 
-export type FipeErrorKind = 'rate-limit' | 'network' | 'not-found';
+export type FipeErrorKind = 'rate-limit' | 'network' | 'not-found' | 'auth';
 
 export interface CalculationResult {
   fipeValue: number;
