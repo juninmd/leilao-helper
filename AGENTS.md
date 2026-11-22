@@ -1,64 +1,65 @@
-# AGENTS.md - Astral Comet
+# AGENTS.md
 
-Extensão Chrome/Firefox (MV3) que mostra FIPE e lucro estimado nos lotes do Freitas Leiloeiro.
+Astral Comet: Chrome and Firefox (MV3) extension that shows FIPE price and estimated profit on Freitas Leiloeiro auction lots.
 
-## Tech Stack
-- **Linguagem:** TypeScript (strict), bundler **tsup** (IIFE), gerenciador **pnpm**
-- **Testes:** vitest (unit) + Playwright (e2e com a extensão carregada em Chromium)
-- **Dev Firefox:** web-ext
-- **APIs:** BrasilAPI (marcas/modelos) + FIPE API v2 `fipe.parallelum.com.br` (anos/preço)
+## Stack
 
-## Structure
-```
-src/content_script.ts   # injeta o card nas páginas; MutationObserver, modo manual, erros
-src/vehicle_picker.ts   # modal "Selecionar veículo" (categoria → marca → modelo → ano)
-src/combobox.ts         # combobox acessível (teclado) usado pelo seletor
-src/search.ts           # busca/filtro de modelos por vários termos, sem acento
-src/fipe_service.ts     # consulta FIPE: marca → modelo (ranking) → ano → preço; cache + FipeError
-src/model_match.ts       # ranking de modelos: leituras de token, sinônimos, família, flag approximate
-src/depara.ts            # tabelas de de-para (marcas, siglas, reescritas por marca, não-FIPE); toda entrada vem de lote real
-src/fipe_http.ts        # fetch com timeout, cache persistente (storage.local), cópia reserva em erro, pausa após 429
-src/persistent_cache.ts # cache por tabela de referência FIPE, cooldown e contador de cota
-src/lib.ts              # funções puras: parseCurrency, parseDescription, calculate (revenda, meta, lance máximo), dealScore, bidRange
-src/risks.ts            # chips de risco a partir do texto do lote (ignora o aviso genérico do leilão)
-src/lot_store.ts        # favorito/checklist/lance-alvo/notas por lote (storage.local); src/lot_notes.ts é a UI (aba "Meu lote")
-src/radar.ts            # Radar do leilão na lista: resumo, melhor lote, ordenar (CSS order) e destacar oportunidades
-src/settings.ts         # defaults e acesso ao chrome.storage.sync
-src/update_check.ts     # última release no GitHub (cache 12 h), compara versão, badge ↑; src/background.ts agenda (alarms)
-src/popup.{html,ts}     # configurações de custos e token FIPE
-src/styles.css          # CSS injetado
-scripts/release*.mts    # versão por Conventional Commits, notas, pacotes Chrome/Firefox, updates.json (node --experimental-strip-types)
-tests/                  # vitest (lib, fipe_service, search, release, update_check, live opcional)
-e2e/                    # Playwright: fixtures (páginas do leilão + mock das APIs) e specs
-docs/screenshots/       # prints gerados pelo e2e (usados no README)
-manifest.json           # MV3, Chrome + Firefox (gecko id)
-```
+- TypeScript (strict), bundled with tsup (IIFE), pnpm
+- Tests: vitest (unit), Playwright (e2e with the extension loaded in Chromium)
+- Firefox dev: web-ext
+- APIs: BrasilAPI (brands and models), FIPE API v2 `fipe.parallelum.com.br` (years and price)
 
 ## Commands
-- `pnpm install` / `pnpm build` / `pnpm watch`
-- `pnpm typecheck` · `pnpm test` · `pnpm test:e2e` · `pnpm lint:ext`
-- `LIVE=1 pnpm test` / `LIVE=1 pnpm test:e2e` → incluem chamadas às APIs reais
-- `pnpm dev` → Firefox via web-ext
-- `pnpm release next` / `pnpm release package <versão>` → simula a release localmente (saída em `release/`, ignorada)
 
-## CI gates
-- `ci.yml`: Node 22, `pnpm install --frozen-lockfile` → `typecheck` → `test` → `build` → `lint:ext` → e2e Playwright. Rode o mesmo antes de abrir PR.
-- `validate.yml`: reusable de `juninmd/base-actions` (lint só avisa; auditoria de dependências `high` bloqueia).
-- `security.yml`: Gitleaks (reusable de `base-actions`). Nunca commitar token FIPE ou `.env`.
-- `release.yml`: no push do branch principal calcula a versão pelos commits (feat → minor, fix/perf/revert → patch, `!`/BREAKING → major), testa, empacota e publica a tag `vX.Y.Z` com `leilao-helper-X.Y.Z-chrome.zip`, `.xpi` assinado + `updates.json` (segredos `AMO_JWT_*`) e, opcionalmente, Chrome Web Store (`CWS_*`).
+```bash
+pnpm install
+pnpm build            # tsup
+pnpm watch
+pnpm typecheck
+pnpm test             # vitest
+pnpm test:e2e         # build + Playwright
+pnpm lint:ext         # web-ext lint
+pnpm dev              # Firefox via web-ext
+LIVE=1 pnpm test      # includes real API calls
+LIVE=1 pnpm test:e2e  # includes real API calls
+pnpm release next     # simulates a release locally; output in release/ (ignored)
+pnpm release package <version>
+```
+
+## Structure
+
+- `src/content_script.ts` - injects the card into lot pages; MutationObserver, manual mode, errors
+- `src/vehicle_picker.ts`, `src/combobox.ts`, `src/search.ts` - "select vehicle" modal, keyboard combobox, accent-insensitive multi-term search
+- `src/fipe_service.ts`, `src/fipe_http.ts`, `src/persistent_cache.ts` - FIPE lookup, fetch with timeout, persistent cache, 429 pause
+- `src/model_match.ts`, `src/depara.ts` - model ranking and name mapping tables (every entry comes from a real lot)
+- `src/lib.ts` - pure functions (parseCurrency, parseDescription, calculate, dealScore, bidRange)
+- `src/risks.ts`, `src/radar.ts` - risk chips and the auction-list radar
+- `src/lot_store.ts`, `src/lot_notes.ts` - per-lot favorite, checklist, target bid, notes; `lot_notes.ts` is the "Meu lote" tab UI
+- `src/settings.ts`, `src/popup.{html,ts}` - defaults, chrome.storage.sync, cost and FIPE token settings
+- `src/update_check.ts`, `src/background.ts` - GitHub release check (12 h cache) and alarms
+- `scripts/release*.mts` - version from Conventional Commits, notes, Chrome/Firefox packages, `updates.json`
+- `tests/` (vitest), `e2e/` (Playwright fixtures and specs), `docs/screenshots/` (generated by e2e, used in README)
 
 ## Conventions
-- TypeScript strict; manifest compatível Chrome/Firefox; UI injetada via CSS próprio (`.fipe-*`).
-- Nome novo do leilão que não casa: adicione a entrada em `depara.ts` + caso em `tests/model_match.test.ts` (nome real do lote, nome FIPE real). Não afrouxe o matcher.
-- Lógica pura vai em `lib.ts` com teste unitário; comportamento de DOM vai coberto no e2e.
-- `commissionRate` é guardado em **%** no storage (popup) e convertido para fração em `settings.ts`; a comissão lida da página já é fração.
-- A resposta real da BrasilAPI usa `{ modelo, valor }` nos modelos e `{ nome, valor }` nas marcas; a FIPE v2 usa `{ code, name }` e `price`. Não presumir outros nomes.
-- Mutações do próprio DOM da extensão (`.fipe-helper-container`, `.fipe-modal-overlay`, `.fipe-radar`) são ignoradas pelo observer — mantenha assim para evitar loop de renderização.
-- Rodar e2e: Chromium em `/opt/pw-browsers` (ou `CHROME_PATH`); não rodar `playwright install`.
-- O site do leilão retorna 403 para automação: use as fixtures de `e2e/fixtures.ts`, nunca scraping real.
-- Texto de UI em português (pt-BR).
-- Commits e títulos de PR (squash) em **Conventional Commits**: eles definem a versão publicada. `chore`/`docs`/`ci`/`test` não geram release.
-- A versão vem da tag; não faça commit de bump no `manifest.json`. O id gecko (`astral-comet@juninmd.github.io`) não muda: trocar quebra a atualização de quem já instalou.
+
+- Keep the manifest compatible with Chrome and Firefox; the gecko id `astral-comet@juninmd.github.io` never changes (changing it breaks updates for installed users).
+- Injected UI uses its own CSS with the `.fipe-*` prefix. Mutations of the extension's DOM (`.fipe-helper-container`, `.fipe-modal-overlay`, `.fipe-radar`) must stay ignored by the observer, or it loops.
+- Pure logic goes in `lib.ts` with a unit test; DOM behavior is covered by e2e.
+- When a new auction lot name does not match, add an entry in `depara.ts` and a case in `tests/model_match.test.ts` (real lot name, real FIPE name). Do not loosen the matcher.
+- `commissionRate` is stored in **percent** in storage (popup) and converted to a fraction in `settings.ts`. The commission read from the page is already a fraction.
+- BrasilAPI returns `{ modelo, valor }` for models and `{ nome, valor }` for brands; FIPE v2 returns `{ code, name }` and `price`. Do not assume other field names.
+- E2E uses fixtures from `e2e/fixtures.ts`. The auction site returns 403 to automation: never scrape it for real.
+- E2E runs on Chromium at `/opt/pw-browsers` (or `CHROME_PATH`). Do not run `playwright install`.
+- UI text is in Portuguese (pt-BR). Code, identifiers and commits are in English.
+- Commits and squash PR titles use Conventional Commits: they set the published version. `feat` gives minor, `fix`/`perf`/`revert` give patch, `!`/BREAKING gives major. `chore`, `docs`, `ci` and `test` do not release.
+- The version comes from the git tag. Do not commit a version bump in `manifest.json`.
+
+## CI gates
+
+- `ci.yml`: Node 22, `pnpm install --frozen-lockfile`, then typecheck, test, build, lint:ext and e2e. Run the same locally before opening a PR.
+- `validate.yml`: reusable from `juninmd/base-actions`. Lint only warns; a `high` dependency audit blocks.
+- `security.yml`: Gitleaks, from `base-actions`.
+- `release.yml`: on push to the main branch it computes the version, tests, packages, and publishes tag `vX.Y.Z` with the Chrome zip, the signed `.xpi` and `updates.json`. Optional Chrome Web Store upload.
 
 <!-- base-actions-main-policy -->
 ## GitHub Actions — padrão obrigatório (@main)
@@ -71,3 +72,9 @@ manifest.json           # MV3, Chrome + Firefox (gecko id)
 - PRs cujos checks não iniciam por billing/spending limit são mesclados pelo bot central
   `juninmd/base-actions/.github/workflows/auto-merge-billing-blocked.yml`.
   Para impedir o merge automático de um PR, aplique a label `do-not-merge`.
+
+## Gotchas
+
+- Secrets: FIPE token, `.env`, `AMO_JWT_*` and `CWS_*` (release). Never commit them.
+- Use pnpm only (`pnpm-lock.yaml`); do not add npm or yarn lockfiles.
+- `LIVE=1` runs hit real APIs; keep them out of default runs.
